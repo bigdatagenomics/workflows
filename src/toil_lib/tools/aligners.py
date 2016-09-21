@@ -29,7 +29,7 @@ def run_star(job, r1_id, r2_id, star_index_url, wiggle=False):
                   '--genomeDir', star_index,
                   '--outFileNamePrefix', 'rna',
                   '--outSAMtype', 'BAM', 'SortedByCoordinate',
-                  '--outSAMunmapped', 'Within',
+                  '--outSAMunmapped', 'Within KeepPairs',
                   '--quantMode', 'TranscriptomeSAM',
                   '--outSAMattributes', 'NH', 'HI', 'AS', 'NM', 'MD',
                   '--outFilterType', 'BySJout',
