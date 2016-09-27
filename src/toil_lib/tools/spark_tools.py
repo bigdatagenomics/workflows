@@ -148,7 +148,7 @@ def call_adam(master_ip, arguments,
     :type native_adam_path: string or None
     :type run_local: boolean
     """
-    if local:
+    if run_local:
         master = ["--master", "local[*]"]
     else:
         master = ["--master",
