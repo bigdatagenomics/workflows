@@ -54,7 +54,7 @@ def run_star(job, r1_id, r2_id, star_index_url, wiggle=False):
         job.fileStore.readGlobalFile(r1_id, os.path.join(work_dir, 'R1.fastq'))
         parameters.extend(['--readFilesIn', '/data/R1.fastq'])
     # Call: STAR Mapping
-    docker_call(tool='quay.io/ucsc_cgl/star:2.4.2a--bcbd5122b69ff6ac4ef61958e47bde94001cfe80',
+    docker_call(job=job, tool='quay.io/ucsc_cgl/star:2.4.2a--bcbd5122b69ff6ac4ef61958e47bde94001cfe80',
                 work_dir=work_dir, parameters=parameters)
     # Write to fileStore
     transcriptome_id = job.fileStore.writeGlobalFile(os.path.join(work_dir, 'rnaAligned.toTranscriptome.out.bam'))
@@ -163,7 +163,7 @@ def run_bwakit(job, config, sort=True, trim=False):
     mock_bam = config.uuid + '.bam'
     outputs = {'aligned.aln.bam': mock_bam}
 
-    docker_call(tool='quay.io/ucsc_cgl/bwakit:0.7.12--528bb9bf73099a31e74a7f5e6e3f2e0a41da486e',
+    docker_call(job=job, tool='quay.io/ucsc_cgl/bwakit:0.7.12--528bb9bf73099a31e74a7f5e6e3f2e0a41da486e',
                 parameters=parameters, inputs=inputs.keys(), outputs=outputs, work_dir=work_dir)
 
     # Either write file to local output directory or upload to S3 cloud storage

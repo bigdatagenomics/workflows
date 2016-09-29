@@ -16,7 +16,7 @@ def run_bwa_index(job, ref_id):
     work_dir = job.fileStore.getLocalTempDir()
     job.fileStore.readGlobalFile(ref_id, os.path.join(work_dir, 'ref.fa'))
     command = ['index', '/data/ref.fa']
-    docker_call(work_dir=work_dir, parameters=command,
+    docker_call(job=job, work_dir=work_dir, parameters=command,
                 tool='quay.io/ucsc_cgl/bwa:0.7.12--256539928ea162949d8a65ca5c79a72ef557ce7c')
     ids = {}
     for output in ['ref.fa.amb', 'ref.fa.ann', 'ref.fa.bwt', 'ref.fa.pac', 'ref.fa.sa']:
@@ -37,6 +37,6 @@ def run_samtools_faidx(job, ref_id):
     work_dir = job.fileStore.getLocalTempDir()
     job.fileStore.readGlobalFile(ref_id, os.path.join(work_dir, 'ref.fasta'))
     command = ['faidx', '/data/ref.fasta']
-    docker_call(work_dir=work_dir, parameters=command,
+    docker_call(job=job, work_dir=work_dir, parameters=command,
                 tool='quay.io/ucsc_cgl/samtools:0.1.19--dd5ac549b95eb3e5d166a5e310417ef13651994e')
     return job.fileStore.writeGlobalFile(os.path.join(work_dir, 'ref.fasta.fai'))

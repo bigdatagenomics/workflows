@@ -41,7 +41,7 @@ def run_mutect(job, normal_bam, normal_bai, tumor_bam, tumor_bai, ref, ref_dict,
                   '--out', 'mutect.out',
                   '--coverage_file', 'mutect.cov',
                   '--vcf', 'mutect.vcf']
-    docker_call(work_dir=work_dir, parameters=parameters,
+    docker_call(job=job, work_dir=work_dir, parameters=parameters,
                 tool='quay.io/ucsc_cgl/mutect:1.1.7--e8bf09459cf0aecb9f55ee689c2b2d194754cbd3')
     # Write output to file store
     output_file_names = ['mutect.vcf', 'mutect.cov', 'mutect.out']
@@ -83,7 +83,7 @@ def run_muse(job, normal_bam, normal_bai, tumor_bam, tumor_bai, ref, ref_dict, f
                   '--normal-bam-index', '/data/normal.bai',
                   '--outfile', '/data/muse.vcf',
                   '--cpus', str(job.cores)]
-    docker_call(tool='quay.io/ucsc_cgl/muse:1.0--6add9b0a1662d44fd13bbc1f32eac49326e48562',
+    docker_call(job=job, tool='quay.io/ucsc_cgl/muse:1.0--6add9b0a1662d44fd13bbc1f32eac49326e48562',
                 work_dir=work_dir, parameters=parameters)
     # Return fileStore ID
     tarball_files('muse.tar.gz', file_paths=[os.path.join(work_dir, 'muse.vcf')], output_dir=work_dir)
@@ -121,7 +121,7 @@ def run_pindel(job, normal_bam, normal_bai, tumor_bam, tumor_bai, ref, fai):
                   '--report_long_insertions', 'true',
                   '--report_breakpoints', 'true',
                   '-o', 'pindel']
-    docker_call(tool='quay.io/ucsc_cgl/pindel:0.2.5b6--4e8d1b31d4028f464b3409c6558fb9dfcad73f88',
+    docker_call(job=job, tool='quay.io/ucsc_cgl/pindel:0.2.5b6--4e8d1b31d4028f464b3409c6558fb9dfcad73f88',
                 work_dir=work_dir, parameters=parameters)
     # Collect output files and write to file store
     output_files = glob(os.path.join(work_dir, 'pindel*'))

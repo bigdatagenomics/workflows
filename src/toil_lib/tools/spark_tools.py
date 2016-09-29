@@ -7,6 +7,7 @@ ADAM/Spark pipeline
 """
 
 import os.path
+from subprocess import check_call
 
 from toil_lib import require
 from toil_lib.programs import docker_call
@@ -94,11 +95,12 @@ def _make_parameters(master_ip, default_parameters, memory, arguments, override_
     return parameters        
     
 
-def call_conductor(master_ip, src, dst, memory=None, override_parameters=None):
+def call_conductor(job, master_ip, src, dst, memory=None, override_parameters=None):
     """
     Invokes the Conductor container to copy files between S3 and HDFS and vice versa.
     Find Conductor at https://github.com/BD2KGenomics/conductor.
 
+    :param toil.Job.job job: The Toil Job calling this function
     :param masterIP: The Spark leader IP address.
     :param src: URL of file to copy.
     :param src: URL of location to copy file to.
@@ -114,7 +116,7 @@ def call_conductor(master_ip, src, dst, memory=None, override_parameters=None):
 
     arguments = ["-C", src, dst]
 
-    docker_call(rm=False,
+    docker_call(job=job, rm=False,
                 tool="quay.io/ucsc_cgl/conductor",
                 docker_parameters=master_ip.docker_parameters(["--net=host"]),
                 parameters=_make_parameters(master_ip,
@@ -125,7 +127,7 @@ def call_conductor(master_ip, src, dst, memory=None, override_parameters=None):
                 mock=False)
 
 
-def call_adam(master_ip, arguments,
+def call_adam(job, master_ip, arguments,
               memory=None,
               override_parameters=None,
               run_local=False,
@@ -133,6 +135,7 @@ def call_adam(master_ip, arguments,
     """
     Invokes the ADAM container. Find ADAM at https://github.com/bigdatagenomics/adam.
 
+    :param toil.Job.job job: The Toil Job calling this function
     :param masterIP: The Spark leader IP address.
     :param arguments: Arguments to pass to ADAM.
     :param memory: Gigabytes of memory to provision for Spark driver/worker.
@@ -174,7 +177,7 @@ def call_adam(master_ip, arguments,
 
     # are we running adam via docker, or do we have a native path?
     if native_adam_path is None:
-        docker_call(rm=False,
+        docker_call(job=job, rm=False,
                     tool="quay.io/ucsc_cgl/adam:962-ehf--6e7085f8cac4b9a927dc9fb06b48007957256b80",
                     docker_parameters=master_ip.docker_parameters(["--net=host"]),
                     parameters=_make_parameters(master_ip,

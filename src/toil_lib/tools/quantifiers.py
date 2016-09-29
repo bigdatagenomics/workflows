@@ -35,7 +35,7 @@ def run_kallisto(job, r1_id, r2_id, kallisto_index_url):
         parameters.extend(['--single', '-l', '200', '-s', '15', '/data/R1_cutadapt.fastq'])
 
     # Call: Kallisto
-    docker_call(tool='quay.io/ucsc_cgl/kallisto:0.42.4--35ac87df5b21a8e8e8d159f26864ac1e1db8cf86',
+    docker_call(job=job, tool='quay.io/ucsc_cgl/kallisto:0.42.4--35ac87df5b21a8e8e8d159f26864ac1e1db8cf86',
                 work_dir=work_dir, parameters=parameters)
     # Tar output files together and store in fileStore
     output_files = [os.path.join(work_dir, x) for x in ['run_info.json', 'abundance.tsv', 'abundance.h5']]
@@ -80,7 +80,7 @@ def run_rsem(job, bam_id, rsem_ref_url, paired=True):
                   output_prefix]
     if paired:
         parameters = ['--paired-end'] + parameters
-    docker_call(tool='quay.io/ucsc_cgl/rsem:1.2.25--d4275175cc8df36967db460b06337a14f40d2f21',
+    docker_call(job=job, tool='quay.io/ucsc_cgl/rsem:1.2.25--d4275175cc8df36967db460b06337a14f40d2f21',
                 parameters=parameters, work_dir=work_dir)
     os.rename(os.path.join(work_dir, output_prefix + '.genes.results'), os.path.join(work_dir, 'rsem_gene.tab'))
     os.rename(os.path.join(work_dir, output_prefix + '.isoforms.results'), os.path.join(work_dir, 'rsem_isoform.tab'))
@@ -108,7 +108,7 @@ def run_rsem_postprocess(job, uuid, rsem_gene_id, rsem_isoform_id):
     job.fileStore.readGlobalFile(rsem_gene_id, os.path.join(work_dir, 'rsem_gene.tab'), mutable=True)
     job.fileStore.readGlobalFile(rsem_isoform_id, os.path.join(work_dir, 'rsem_isoform.tab'), mutable=True)
     # Convert RSEM files into individual .tab files.
-    docker_call(tool='jvivian/rsem_postprocess', parameters=[uuid], work_dir=work_dir)
+    docker_call(job=job, tool='jvivian/rsem_postprocess', parameters=[uuid], work_dir=work_dir)
     os.rename(os.path.join(work_dir, 'rsem_gene.tab'), os.path.join(work_dir, 'rsem_genes.results'))
     os.rename(os.path.join(work_dir, 'rsem_isoform.tab'), os.path.join(work_dir, 'rsem_isoforms.results'))
     output_files = ['rsem.genes.norm_counts.tab', 'rsem.genes.raw_counts.tab', 'rsem.isoform.norm_counts.tab',
@@ -117,7 +117,7 @@ def run_rsem_postprocess(job, uuid, rsem_gene_id, rsem_isoform_id):
     genes = [x for x in output_files if 'rsem.genes' in x]
     isoforms = [x for x in output_files if 'rsem.isoform' in x]
     command = ['-g'] + genes + ['-i'] + isoforms
-    docker_call(tool='jvivian/gencode_hugo_mapping', parameters=command, work_dir=work_dir)
+    docker_call(job=job, tool='jvivian/gencode_hugo_mapping', parameters=command, work_dir=work_dir)
     hugo_files = [os.path.splitext(x)[0] + '.hugo' + os.path.splitext(x)[1] for x in genes + isoforms]
     # Create tarballs for outputs
     tarball_files('rsem.tar.gz', file_paths=[os.path.join(work_dir, x) for x in output_files], output_dir=work_dir)

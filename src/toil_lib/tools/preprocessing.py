@@ -35,7 +35,7 @@ def run_cutadapt(job, r1_id, r2_id, fwd_3pr_adapter, rev_3pr_adapter):
         job.fileStore.readGlobalFile(r1_id, os.path.join(work_dir, 'R1.fastq'))
         parameters.extend(['-o', '/data/R1_cutadapt.fastq', '/data/R1.fastq'])
     # Call: CutAdapt
-    docker_call(tool='quay.io/ucsc_cgl/cutadapt:1.9--6bd44edd2b8f8f17e25c5a268fedaab65fa851d2',
+    docker_call(job=job, tool='quay.io/ucsc_cgl/cutadapt:1.9--6bd44edd2b8f8f17e25c5a268fedaab65fa851d2',
                 work_dir=work_dir, parameters=parameters)
     # Write to fileStore
     if r1_id and r2_id:
@@ -60,7 +60,7 @@ def run_samtools_faidx(job, ref_id):
     work_dir = job.fileStore.getLocalTempDir()
     job.fileStore.readGlobalFile(ref_id, os.path.join(work_dir, 'ref.fasta'))
     command = ['faidx', 'ref.fasta']
-    docker_call(work_dir=work_dir, parameters=command,
+    docker_call(job=job, work_dir=work_dir, parameters=command,
                 tool='quay.io/ucsc_cgl/samtools:0.1.19--dd5ac549b95eb3e5d166a5e310417ef13651994e')
     return job.fileStore.writeGlobalFile(os.path.join(work_dir, 'ref.fasta.fai'))
 
@@ -78,7 +78,7 @@ def run_samtools_index(job, bam):
     job.fileStore.readGlobalFile(bam, os.path.join(work_dir, 'sample.bam'))
     # Call: index the bam
     parameters = ['index', '/data/sample.bam']
-    docker_call(work_dir=work_dir, parameters=parameters,
+    docker_call(job=job, work_dir=work_dir, parameters=parameters,
                 tool='quay.io/ucsc_cgl/samtools:0.1.19--dd5ac549b95eb3e5d166a5e310417ef13651994e')
     # Write to fileStore
     return job.fileStore.writeGlobalFile(os.path.join(work_dir, 'sample.bam.bai'))
@@ -99,7 +99,7 @@ def run_samtools_sort(job, bam):
                '-@', str(job.cores),
                '-o', '/data/output.bam',
                '/data/input.bam']
-    docker_call(work_dir=work_dir,
+    docker_call(job=job, work_dir=work_dir,
                 parameters=command,
                 tool='quay.io/ucsc_cgl/samtools:1.3--256539928ea162949d8a65ca5c79a72ef557ce7c',
                 outputs={'output.bam': None})
@@ -119,7 +119,7 @@ def run_picard_create_sequence_dictionary(job, ref_id):
     work_dir = job.fileStore.getLocalTempDir()
     job.fileStore.readGlobalFile(ref_id, os.path.join(work_dir, 'ref.fasta'))
     command = ['CreateSequenceDictionary', 'R=ref.fasta', 'O=ref.dict']
-    docker_call(work_dir=work_dir,
+    docker_call(job=job, work_dir=work_dir,
                 parameters=command,
                 tool='quay.io/ucsc_cgl/picardtools:1.95--dd5ac549b95eb3e5d166a5e310417ef13651994e')
     return job.fileStore.writeGlobalFile(os.path.join(work_dir, 'ref.dict'))
@@ -151,7 +151,7 @@ def picard_mark_duplicates(job, bam, bai, validation_stringency='LENIENT'):
                'CREATE_INDEX=true',
                'VALIDATION_STRINGENCY=%s' % validation_stringency.upper()]
 
-    docker_call(work_dir=work_dir,
+    docker_call(job=job, work_dir=work_dir,
                 parameters=command,
                 # picard-tools container doesn't have JAVA_OPTS variable
                 # Set TMPDIR to /data to prevent writing temporary files to /tmp
@@ -333,7 +333,7 @@ def run_realigner_target_creator(job, bam, bai, ref, ref_dict, fai, g1k, mills, 
     if unsafe:
         parameters.extend(['-U', 'ALLOW_SEQ_DICT_INCOMPATIBILITY'])
 
-    docker_call(tool='quay.io/ucsc_cgl/gatk:3.5--dba6dae49156168a909c43330350c6161dc7ecc2',
+    docker_call(job=job, tool='quay.io/ucsc_cgl/gatk:3.5--dba6dae49156168a909c43330350c6161dc7ecc2',
                 inputs=inputs.keys(),
                 outputs={'sample.intervals': None},
                 work_dir=work_dir,
@@ -391,7 +391,7 @@ def run_indel_realignment(job, intervals, bam, bai, ref, ref_dict, fai, g1k, mil
     if unsafe:
         parameters.extend(['-U', 'ALLOW_SEQ_DICT_INCOMPATIBILITY'])
 
-    docker_call(tool='quay.io/ucsc_cgl/gatk:3.5--dba6dae49156168a909c43330350c6161dc7ecc2',
+    docker_call(job=job, tool='quay.io/ucsc_cgl/gatk:3.5--dba6dae49156168a909c43330350c6161dc7ecc2',
                 inputs=inputs.keys(),
                 work_dir=work_dir,
                 parameters=parameters,
@@ -446,7 +446,7 @@ def run_base_recalibration(job, bam, bai, ref, ref_dict, fai, dbsnp, mills, unsa
     if unsafe:
         parameters.extend(['-U', 'ALLOW_SEQ_DICT_INCOMPATIBILITY'])
 
-    docker_call(tool='quay.io/ucsc_cgl/gatk:3.5--dba6dae49156168a909c43330350c6161dc7ecc2',
+    docker_call(job=job, tool='quay.io/ucsc_cgl/gatk:3.5--dba6dae49156168a909c43330350c6161dc7ecc2',
                 inputs=inputs.keys(),
                 outputs={'recal_data.table': None},
                 work_dir=work_dir,
@@ -494,7 +494,7 @@ def apply_bqsr_recalibration(job, table, bam, bai, ref, ref_dict, fai, unsafe=Fa
     if unsafe:
         parameters.extend(['-U', 'ALLOW_SEQ_DICT_INCOMPATIBILITY'])
 
-    docker_call(tool='quay.io/ucsc_cgl/gatk:3.5--dba6dae49156168a909c43330350c6161dc7ecc2',
+    docker_call(job=job, tool='quay.io/ucsc_cgl/gatk:3.5--dba6dae49156168a909c43330350c6161dc7ecc2',
                 inputs=inputs.keys(),
                 outputs={'bqsr.bam': None, 'bqsr.bai': None},
                 work_dir=work_dir,
