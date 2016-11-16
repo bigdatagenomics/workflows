@@ -164,7 +164,7 @@ def picard_mark_duplicates(job, bam, bai, validation_stringency='LENIENT'):
     return bam, bai
 
 
-def run_gatk_preprocessing(job, bam, bai, ref, ref_dict, fai, g1k, mills, dbsnp, unsafe=False):
+def run_gatk_preprocessing(job, bam, bai, ref, ref_dict, fai, g1k, mills, dbsnp, realign=False, unsafe=False):
     """
     GATK Preprocessing Pipeline
     0: Mark duplicates
@@ -182,6 +182,7 @@ def run_gatk_preprocessing(job, bam, bai, ref, ref_dict, fai, g1k, mills, dbsnp,
     :param str g1k: FileStoreID for 1000 Genomes VCF file
     :param str mills: FileStoreID for Mills VCF file
     :param str dbsnp: FileStoreID for dbSNP VCF file
+    :param bool realign: If True, then runs GATK INDEL realignment"
     :param bool unsafe: If True, runs GATK tools in UNSAFE mode: "-U ALLOW_SEQ_DICT_INCOMPATIBILITY"
     :return: FileStoreIDs for BAM and BAI files
     :rtype: tuple(str, str)
@@ -196,51 +197,64 @@ def run_gatk_preprocessing(job, bam, bai, ref, ref_dict, fai, g1k, mills, dbsnp,
                           disk=mdups_disk,
                           memory=job.memory)
 
+    # Store input for BQSR
+    bqsr_input_bam = mdups.rv(0)
+    bqsr_input_bai = mdups.rv(1)
+
     # Get genome reference file sizes for calculating disk requirements
     genome_ref_size = ref.size + ref_dict.size + fai.size
 
-    # Get INDEL resource file sizes and genome reference file sizes
-    indel_ref_size = mills.size + g1k.size + genome_ref_size
+    if realign:
+        # Get INDEL resource file sizes and genome reference file sizes
+        indel_ref_size = mills.size + g1k.size + genome_ref_size
 
-    # The RealignerTargetCreator disk requirement depends on the input BAM/BAI files, the genome reference files, and
-    # the output intervals file. The intervals file size is less than the reference file size, so estimate the interval
-    # file size as the reference file size.
-    realigner_target_disk = PromisedRequirement(lambda bam_, bai_, ref_size:
-                                                bam_.size + bai_.size + 2 * ref_size,
-                                                mdups.rv(0),
-                                                mdups.rv(1),
-                                                indel_ref_size)
+        # The RealignerTargetCreator disk requirement depends on the input BAM/BAI files, the genome reference files,
+        # and the output intervals file. The intervals file size is less than the reference file size, so estimate the
+        # interval file size as the reference file size.
+        realigner_target_disk = PromisedRequirement(lambda bam_, bai_, ref_size:
+                                                    bam_.size + bai_.size + 2 * ref_size,
+                                                    mdups.rv(0),
+                                                    mdups.rv(1),
+                                                    indel_ref_size)
 
-    realigner_target = job.wrapJobFn(run_realigner_target_creator,
-                                     mdups.rv(0),
-                                     mdups.rv(1),
-                                     ref, ref_dict, fai,
-                                     g1k, mills,
-                                     unsafe=unsafe,
-                                     cores=1,  # RealignerTargetCreator is single threaded
-                                     disk=realigner_target_disk,
-                                     memory=job.memory)
+        realigner_target = job.wrapJobFn(run_realigner_target_creator,
+                                         mdups.rv(0),
+                                         mdups.rv(1),
+                                         ref, ref_dict, fai,
+                                         g1k, mills,
+                                         unsafe=unsafe,
+                                         cores=1,  # RealignerTargetCreator is single threaded
+                                         disk=realigner_target_disk,
+                                         memory=job.memory)
 
-    # The INDEL realignment disk requirement depends on the input BAM and BAI files, the intervals
-    # file, the variant resource files, and the output BAM and BAI files. Here, we assume the
-    # output BAM and BAI files are approximately the same size as the input BAM and BAI files.
-    indel_realign_disk = PromisedRequirement(lambda bam_, bai_, intervals, ref_size:
-                                             2 * (bam_.size + bai_.size) + intervals.size + ref_size,
-                                             mdups.rv(0),
-                                             mdups.rv(1),
-                                             realigner_target.rv(),
-                                             indel_ref_size)
+        # The INDEL realignment disk requirement depends on the input BAM and BAI files, the intervals
+        # file, the variant resource files, and the output BAM and BAI files. Here, we assume the
+        # output BAM and BAI files are approximately the same size as the input BAM and BAI files.
+        indel_realign_disk = PromisedRequirement(lambda bam_, bai_, intervals, ref_size:
+                                                 2 * (bam_.size + bai_.size) + intervals.size + ref_size,
+                                                 mdups.rv(0),
+                                                 mdups.rv(1),
+                                                 realigner_target.rv(),
+                                                 indel_ref_size)
 
-    indel_realign = job.wrapJobFn(run_indel_realignment,
-                                  realigner_target.rv(),
-                                  mdups.rv(0),
-                                  mdups.rv(1),
-                                  ref, ref_dict, fai,
-                                  g1k, mills,
-                                  unsafe=unsafe,
-                                  cores=1,  # IndelRealigner is single threaded
-                                  disk=indel_realign_disk,
-                                  memory=job.memory)
+        indel_realign = job.wrapJobFn(run_indel_realignment,
+                                      realigner_target.rv(),
+                                      mdups.rv(0),
+                                      mdups.rv(1),
+                                      ref, ref_dict, fai,
+                                      g1k, mills,
+                                      unsafe=unsafe,
+                                      cores=1,  # IndelRealigner is single threaded
+                                      disk=indel_realign_disk,
+                                      memory=job.memory)
+
+        mdups.addChild(realigner_target)
+        realigner_target.addChild(indel_realign)
+
+        # Update input for BQSR using the realigned BAM files
+        bqsr_input_bam = indel_realign.rv(0)
+        bqsr_input_bai = indel_realign.rv(1)
+
 
     # Get size of BQSR databases and genome reference files
     bqsr_ref_size = dbsnp.size + mills.size + genome_ref_size
@@ -250,13 +264,13 @@ def run_gatk_preprocessing(job, bam, bai, ref, ref_dict, fai, g1k, mills, dbsnp,
     # the reference file sizes to estimate the recalibration table file size.
     base_recal_disk = PromisedRequirement(lambda bam_, bai_, ref_size:
                                           bam_.size + bai_.size + 2 * ref_size,
-                                          indel_realign.rv(0),
-                                          indel_realign.rv(1),
+                                          bqsr_input_bam,
+                                          bqsr_input_bai,
                                           bqsr_ref_size)
 
     base_recal = job.wrapJobFn(run_base_recalibration,
-                               indel_realign.rv(0),
-                               indel_realign.rv(1),
+                               bqsr_input_bam,
+                               bqsr_input_bai,
                                ref, ref_dict, fai,
                                dbsnp, mills,
                                unsafe=unsafe,
@@ -269,15 +283,15 @@ def run_gatk_preprocessing(job, bam, bai, ref, ref_dict, fai, g1k, mills, dbsnp,
     # same size as the input BAM and BAI files.
     recalibrate_reads_disk = PromisedRequirement(lambda bam_, bai_, recal, ref_size:
                                                  2 * (bam_.size + bai_.size) + recal.size + ref_size,
-                                                 indel_realign.rv(0),
-                                                 indel_realign.rv(1),
+                                                 bqsr_input_bam,
+                                                 bqsr_input_bai,
                                                  base_recal.rv(),
                                                  genome_ref_size)
 
     recalibrate_reads = job.wrapJobFn(apply_bqsr_recalibration,
                                       base_recal.rv(),
-                                      indel_realign.rv(0),
-                                      indel_realign.rv(1),
+                                      bqsr_input_bam,
+                                      bqsr_input_bai,
                                       ref, ref_dict, fai,
                                       unsafe=unsafe,
                                       cores=job.cores,
@@ -285,9 +299,7 @@ def run_gatk_preprocessing(job, bam, bai, ref, ref_dict, fai, g1k, mills, dbsnp,
                                       memory=job.memory)
 
     job.addChild(mdups)
-    mdups.addChild(realigner_target)
-    realigner_target.addChild(indel_realign)
-    indel_realign.addChild(base_recal)
+    mdups.addFollowOn(base_recal)
     base_recal.addChild(recalibrate_reads)
     return recalibrate_reads.rv(0), recalibrate_reads.rv(1)
 
