@@ -501,7 +501,6 @@ def apply_bqsr_recalibration(job, table, bam, bai, ref, ref_dict, fai, unsafe=Fa
                   '-R', '/data/ref.fasta',
                   '-I', '/data/input.bam',
                   '-BQSR', '/data/recal.table',
-                  '--emit_original_quals',
                   '-o', '/data/bqsr.bam']
     if unsafe:
         parameters.extend(['-U', 'ALLOW_SEQ_DICT_INCOMPATIBILITY'])
