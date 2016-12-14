@@ -41,7 +41,8 @@ def run_star(job, r1_id, r2_id, star_index_url, wiggle=False):
                   '--alignMatesGapMax', '1000000',
                   '--alignSJoverhangMin', '8',
                   '--alignSJDBoverhangMin', '1',
-                  '--sjdbScore', '1']
+                  '--sjdbScore', '1',
+                  '--limitBAMsortRAM', '49268954168']
     if wiggle:
         parameters.extend(['--outWigType', 'bedGraph',
                            '--outWigStrand', 'Unstranded',
