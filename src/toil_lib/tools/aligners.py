@@ -10,6 +10,9 @@ def run_star(job, r1_id, r2_id, star_index_url, wiggle=False):
     """
     Performs alignment of fastqs to bam via STAR
 
+    --limitBAMsortRAM step added to deal with memory explosion when sorting certain samples.
+    The value was chosen to complement the recommended amount of memory to have when running STAR (60G)
+
     :param JobFunctionWrappingJob job: passed automatically by Toil
     :param str r1_id: FileStoreID of fastq (pair 1)
     :param str r2_id: FileStoreID of fastq (pair 2 if applicable, else pass None)
@@ -57,9 +60,12 @@ def run_star(job, r1_id, r2_id, star_index_url, wiggle=False):
     # Call: STAR Mapping
     docker_call(job=job, tool='quay.io/ucsc_cgl/star:2.4.2a--bcbd5122b69ff6ac4ef61958e47bde94001cfe80',
                 work_dir=work_dir, parameters=parameters)
+    # Check output bam isnt size zero
+    sorted_bam_path = os.path.join(work_dir, 'rnaAligned.sortedByCoord.out.bam')
+    assert(os.stat(sorted_bam_path).st_size > 0, 'Genome-aligned bam failed to sort. Ensure sufficient memory is free.')
     # Write to fileStore
+    sorted_id = job.fileStore.writeGlobalFile(sorted_bam_path)
     transcriptome_id = job.fileStore.writeGlobalFile(os.path.join(work_dir, 'rnaAligned.toTranscriptome.out.bam'))
-    sorted_id = job.fileStore.writeGlobalFile(os.path.join(work_dir, 'rnaAligned.sortedByCoord.out.bam'))
     log_id = job.fileStore.writeGlobalFile(os.path.join(work_dir, 'rnaLog.final.out'))
     if wiggle:
         wiggle_id = job.fileStore.writeGlobalFile(os.path.join(work_dir, 'rnaSignal.UniqueMultiple.str1.out.bg'))
