@@ -1,8 +1,8 @@
 import os
-
 import subprocess
 
-from toil_lib.programs import docker_call
+from toil.lib.docker import dockerCall
+
 from toil_lib.urls import download_url
 
 
@@ -22,7 +22,7 @@ def run_star(job, r1_id, r2_id, star_index_url, wiggle=False):
     :rtype: str
     """
     work_dir = job.fileStore.getLocalTempDir()
-    download_url(url=star_index_url, name='starIndex.tar.gz', work_dir=work_dir)
+    download_url(job, url=star_index_url, name='starIndex.tar.gz', work_dir=work_dir)
     subprocess.check_call(['tar', '-xvf', os.path.join(work_dir, 'starIndex.tar.gz'), '-C', work_dir])
     os.remove(os.path.join(work_dir, 'starIndex.tar.gz'))
     # Determine tarball structure - star index contains are either in a subdir or in the tarball itself
@@ -58,8 +58,8 @@ def run_star(job, r1_id, r2_id, star_index_url, wiggle=False):
         job.fileStore.readGlobalFile(r1_id, os.path.join(work_dir, 'R1.fastq'))
         parameters.extend(['--readFilesIn', '/data/R1.fastq'])
     # Call: STAR Mapping
-    docker_call(job=job, tool='quay.io/ucsc_cgl/star:2.4.2a--bcbd5122b69ff6ac4ef61958e47bde94001cfe80',
-                work_dir=work_dir, parameters=parameters)
+    dockerCall(job=job, tool='quay.io/ucsc_cgl/star:2.4.2a--bcbd5122b69ff6ac4ef61958e47bde94001cfe80',
+               workDir=work_dir, parameters=parameters)
     # Check output bam isnt size zero
     sorted_bam_path = os.path.join(work_dir, 'rnaAligned.sortedByCoord.out.bam')
     assert(os.stat(sorted_bam_path).st_size > 0, 'Genome-aligned bam failed to sort. Ensure sufficient memory is free.')
@@ -115,6 +115,7 @@ def run_bwakit(job, config, sort=True, trim=False, mark_secondary=False):
     :rtype: str
     """
     work_dir = job.fileStore.getLocalTempDir()
+    rg = None
     inputs = {'ref.fa': config.ref,
               'ref.fa.fai': config.fai,
               'ref.fa.amb': config.amb,
@@ -171,11 +172,9 @@ def run_bwakit(job, config, sort=True, trim=False, mark_secondary=False):
         parameters = ['-R', rg] + parameters
     for sample in samples:
         parameters.append('/data/{}'.format(sample))
-    mock_bam = config.uuid + '.bam'
-    outputs = {'aligned.aln.bam': mock_bam}
 
-    docker_call(job=job, tool='quay.io/ucsc_cgl/bwakit:0.7.12--c85ccff267d5021b75bb1c9ccf5f4b79f91835cc',
-                parameters=parameters, inputs=inputs.keys(), outputs=outputs, work_dir=work_dir)
+    dockerCall(job=job, tool='quay.io/ucsc_cgl/bwakit:0.7.12--c85ccff267d5021b75bb1c9ccf5f4b79f91835cc',
+               parameters=parameters, workDir=work_dir)
 
     # Either write file to local output directory or upload to S3 cloud storage
     job.fileStore.logToMaster('Aligned sample: {}'.format(config.uuid))
