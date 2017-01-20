@@ -9,9 +9,9 @@ ADAM/Spark pipeline
 import os.path
 from subprocess import check_call
 
-from toil_lib import require
-from toil_lib.programs import docker_call
+from toil.lib.docker import dockerCall
 
+from toil_lib import require
 
 SPARK_MASTER_PORT = "7077"
 HDFS_MASTER_PORT = "8020"
@@ -116,15 +116,15 @@ def call_conductor(job, master_ip, src, dst, memory=None, override_parameters=No
 
     arguments = ["-C", src, dst]
 
-    docker_call(job=job, rm=False,
+    docker_parameters = ['--log-driver', 'none', master_ip.docker_parameters(["--net=host"])]
+    dockerCall(job=job,
                 tool="quay.io/ucsc_cgl/conductor",
-                docker_parameters=master_ip.docker_parameters(["--net=host"]),
                 parameters=_make_parameters(master_ip,
                                             [], # no conductor specific spark configuration
                                             memory,
                                             arguments,
                                             override_parameters),
-                mock=False)
+               dockerParameters=docker_parameters)
 
 
 def call_adam(job, master_ip, arguments,
@@ -177,15 +177,15 @@ def call_adam(job, master_ip, arguments,
 
     # are we running adam via docker, or do we have a native path?
     if native_adam_path is None:
-        docker_call(job=job, rm=False,
+        docker_parameters = ['--log-driver', 'none', master_ip.docker_parameters(["--net=host"])]
+        dockerCall(job=job,
                     tool="quay.io/ucsc_cgl/adam:962-ehf--6e7085f8cac4b9a927dc9fb06b48007957256b80",
-                    docker_parameters=master_ip.docker_parameters(["--net=host"]),
+                    dockerParameters=docker_parameters,
                     parameters=_make_parameters(master_ip,
                                                 default_params,
                                                 memory,
                                                 arguments,
-                                                override_parameters),
-                    mock=False)
+                                                override_parameters))
     else:
         check_call([os.path.join(native_adam_path, "bin/adam-submit")] +
                    default_params +

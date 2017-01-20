@@ -19,11 +19,11 @@ import subprocess
 import time
 
 from toil.job import Job
-
-from toil_lib.programs import docker_call
+from toil.lib.docker import STOP, dockerCheckOutput
 
 _log = logging.getLogger(__name__)
 _SPARK_MASTER_PORT = "7077"
+
 
 def spawn_spark_cluster(job,
                         numWorkers,
@@ -132,34 +132,27 @@ class SparkService(Job.Service):
             self.hostname = subprocess.check_output(["hostname", "-f",])[:-1]
 
         _log.info("Started Spark master container.")
-        self.sparkContainerID = docker_call(job = job,
-                                            rm = False,
-                                            detached = True,
-                                            defer = docker_call.STOP,
-                                            work_dir = os.getcwd(),
-                                            tool = "quay.io/ucsc_cgl/apache-spark-master:1.5.2",
-                                            docker_parameters = ["--net=host",
-                                                                 "-d",
-                                                                 "-v", "/mnt/ephemeral/:/ephemeral/:rw",
-                                                                 "-e", "SPARK_MASTER_IP="+self.hostname,
-                                                                 "-e", "SPARK_LOCAL_DIRS=/ephemeral/spark/local",
-                                                                 "-e", "SPARK_WORKER_DIR=/ephemeral/spark/work"],
-                                            parameters = [self.hostname],
-                                            check_output = True)[:-1]
+        self.sparkContainerID = dockerCheckOutput(job=job,
+                                                  defer=STOP,
+                                                  workDir=os.getcwd(),
+                                                  tool="quay.io/ucsc_cgl/apache-spark-master:1.5.2",
+                                                  dockerParameters=["--net=host",
+                                                                    "-d",
+                                                                    "-v", "/mnt/ephemeral/:/ephemeral/:rw",
+                                                                    "-e", "SPARK_MASTER_IP=" + self.hostname,
+                                                                    "-e", "SPARK_LOCAL_DIRS=/ephemeral/spark/local",
+                                                                    "-e", "SPARK_WORKER_DIR=/ephemeral/spark/work"],
+                                                  parameters=[self.hostname])[:-1]
         _log.info("Started HDFS Datanode.")
-        self.hdfsContainerID = docker_call(job = job,
-                                           rm = False,
-                                           detached = True,
-                                           defer = docker_call.STOP,
-                                           work_dir = os.getcwd(),
-                                           tool = "quay.io/ucsc_cgl/apache-hadoop-master:2.6.2",
-                                           docker_parameters = ["--net=host",
-                                                                "-d"],
-                                           parameters = [self.hostname],
-                                           check_output = True)[:-1]
-        
-        return self.hostname
+        self.hdfsContainerID = dockerCheckOutput(job=job,
+                                           defer=STOP,
+                                           workDir=os.getcwd(),
+                                           tool="quay.io/ucsc_cgl/apache-hadoop-master:2.6.2",
+                                           dockerParameters=["--net=host",
+                                                              "-d"],
+                                           parameters=[self.hostname])[:-1]
 
+        return self.hostname
 
     def stop(self, job):
         """
@@ -223,20 +216,18 @@ class WorkerService(Job.Service):
         """
 
         # start spark and our datanode
-        self.sparkContainerID = docker_call(job = job,
-                                            rm = False,
-                                            detached = True,
-                                            defer = docker_call.STOP,
-                                            work_dir = os.getcwd(),
-                                            tool = "quay.io/ucsc_cgl/apache-spark-worker:1.5.2",
-                                            docker_parameters = ["--net=host", 
-                                                                 "-d",
-                                                                 "-v", "/mnt/ephemeral/:/ephemeral/:rw",
-                                                                 "-e", "\"SPARK_MASTER_IP="+self.masterIP+":"+_SPARK_MASTER_PORT+"\"",
-                                                                 "-e", "SPARK_LOCAL_DIRS=/ephemeral/spark/local",
-                                                                 "-e", "SPARK_WORKER_DIR=/ephemeral/spark/work"],
-                                            parameters = [self.masterIP+":"+_SPARK_MASTER_PORT],
-                                            check_output = True)[:-1]
+        self.sparkContainerID = dockerCheckOutput(job=job,
+                                                  defer=STOP,
+                                                  workDir=os.getcwd(),
+                                                  tool="quay.io/ucsc_cgl/apache-spark-worker:1.5.2",
+                                                  dockerParameters=["--net=host",
+                                                                    "-d",
+                                                                    "-v", "/mnt/ephemeral/:/ephemeral/:rw",
+                                                                    "-e",
+                                                                    "\"SPARK_MASTER_IP=" + self.masterIP + ":" + _SPARK_MASTER_PORT + "\"",
+                                                                    "-e", "SPARK_LOCAL_DIRS=/ephemeral/spark/local",
+                                                                    "-e", "SPARK_WORKER_DIR=/ephemeral/spark/work"],
+                                                  parameters=[self.masterIP + ":" + _SPARK_MASTER_PORT])[:-1]
         self.__start_datanode(job)
         
         # fake do/while to check if HDFS is up
@@ -248,13 +239,13 @@ class WorkerService(Job.Service):
             time.sleep(30)
             clusterID = ""
             try:
-                clusterID = check_output(["docker",
-                                          "exec",
-                                          self.hdfsContainerID,
-                                          "grep",
-                                          "clusterID",
-                                          "-R",
-                                          "/opt/apache-hadoop/logs"])
+                clusterID = subprocess.check_output(["docker",
+                                                     "exec",
+                                                     self.hdfsContainerID,
+                                                     "grep",
+                                                     "clusterID",
+                                                     "-R",
+                                                     "/opt/apache-hadoop/logs"])
             except:
                 # grep returns a non-zero exit code if the pattern is not found
                 # we expect to not find the pattern, so a non-zero code is OK
@@ -266,17 +257,17 @@ class WorkerService(Job.Service):
                 retries += 1
 
                 _log.warning("Removing ephemeral hdfs directory.")
-                check_call(["docker",
-                            "exec",
-                            self.hdfsContainerID,
-                            "rm",
-                            "-rf",
-                            "/ephemeral/hdfs"])
+                subprocess.check_call(["docker",
+                                       "exec",
+                                       self.hdfsContainerID,
+                                       "rm",
+                                       "-rf",
+                                       "/ephemeral/hdfs"])
 
                 _log.warning("Killing container %s.", self.hdfsContainerID)
-                check_call(["docker",
-                            "kill",
-                            self.hdfsContainerID])
+                subprocess.check_call(["docker",
+                                       "kill",
+                                       self.hdfsContainerID])
 
                 # todo: this is copied code. clean up!
                 _log.info("Restarting datanode.")
@@ -291,25 +282,20 @@ class WorkerService(Job.Service):
 
         return
 
-
     def __start_datanode(self, job):
         """
         Launches the Hadoop datanode.
 
         :param job: The underlying job.
         """
-        self.hdfsContainerID = docker_call(job = job,
-                                           rm = False,
-                                           detached = True,
-                                           defer = docker_call.STOP,
-                                           work_dir = os.getcwd(),
-                                           tool = "quay.io/ucsc_cgl/apache-hadoop-worker:2.6.2",
-                                           docker_parameters = ["--net=host",
-                                                                "-d",
-                                                                "-v", "/mnt/ephemeral/:/ephemeral/:rw"],
-                                           parameters = [self.masterIP],
-                                           check_output = True)[:-1]
-
+        self.hdfsContainerID = dockerCheckOutput(job=job,
+                                                 defer=STOP,
+                                                 workDir=os.getcwd(),
+                                                 tool="quay.io/ucsc_cgl/apache-hadoop-worker:2.6.2",
+                                                 dockerParameters=["--net=host",
+                                                                    "-d",
+                                                                    "-v", "/mnt/ephemeral/:/ephemeral/:rw"],
+                                                 parameters=[self.masterIP])[:-1]
 
     def stop(self, fileStore):
         """
