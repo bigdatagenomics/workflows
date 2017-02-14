@@ -67,11 +67,12 @@ def run_star(job, r1_id, r2_id, star_index_url, wiggle=False):
     sorted_id = job.fileStore.writeGlobalFile(sorted_bam_path)
     transcriptome_id = job.fileStore.writeGlobalFile(os.path.join(work_dir, 'rnaAligned.toTranscriptome.out.bam'))
     log_id = job.fileStore.writeGlobalFile(os.path.join(work_dir, 'rnaLog.final.out'))
+    sj_id = job.fileStore.writeGlobalFile(os.path.join(work_dir, 'rnaSJ.out.tab'))
     if wiggle:
         wiggle_id = job.fileStore.writeGlobalFile(os.path.join(work_dir, 'rnaSignal.UniqueMultiple.str1.out.bg'))
-        return transcriptome_id, sorted_id, wiggle_id, log_id
+        return transcriptome_id, sorted_id, wiggle_id, log_id, sj_id
     else:
-        return transcriptome_id, sorted_id, log_id
+        return transcriptome_id, sorted_id, log_id, sj_id
 
 
 def run_bwakit(job, config, sort=True, trim=False, mark_secondary=False):
