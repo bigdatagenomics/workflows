@@ -80,7 +80,8 @@ kwargs = dict(
     packages=find_packages('src'),
     entry_points={
         'console_scripts': [
-            'toil-adam = toil_bdg.adam_pipeline.preprocessing:main']})
+            'toil-adam = toil_bdg.adam_pipeline.preprocessing:main',
+            'toil-avocado = toil_bdg.avocado_pipeline.variant_calling:main']})
 
 
 class PyTest(TestCommand):

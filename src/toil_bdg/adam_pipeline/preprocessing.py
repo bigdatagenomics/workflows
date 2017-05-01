@@ -58,7 +58,7 @@ from toil_lib.tools.spark_tools import call_adam, \
     HDFS_MASTER_PORT, \
     SPARK_MASTER_PORT
 
-log = logging.getLogger(__name__)
+_log = logging.getLogger(__name__)
 
 
 def remove_file(master_ip, filename, spark_on_toil):
@@ -112,12 +112,12 @@ def download_data(job, master_ip, inputs, known_snps, bam, hdfs_snps, hdfs_bam):
     :type masterIP: MasterAddress
     """
 
-    log.info("Downloading known sites file %s to %s.", known_snps, hdfs_snps)
+    _log.info("Downloading known sites file %s to %s.", known_snps, hdfs_snps)
     call_conductor(job, master_ip, known_snps, hdfs_snps,
                    container='fnothaft/conductor',
                    memory=inputs.memory)
 
-    log.info("Downloading input BAM %s to %s.", bam, hdfs_bam)
+    _log.info("Downloading input BAM %s to %s.", bam, hdfs_bam)
     call_conductor(job, master_ip, bam, hdfs_bam,
                    container='fnothaft/conductor',
                    memory=inputs.memory)
@@ -128,7 +128,7 @@ def adam_convert(job, master_ip, inputs, in_file, in_snps, adam_file, adam_snps,
     Convert input sam/bam file and known SNPs file into ADAM format
     """
 
-    log.info("Converting input BAM to ADAM.")
+    _log.info("Converting input BAM to ADAM.")
     call_adam(job, master_ip,
               ["transform", in_file, adam_file],
               memory=inputs.memory,
@@ -139,7 +139,7 @@ def adam_convert(job, master_ip, inputs, in_file, in_snps, adam_file, adam_snps,
     in_file_name = in_file.split("/")[-1]
     remove_file(master_ip, in_file_name, spark_on_toil)
 
-    log.info("Converting known sites VCF to ADAM.")
+    _log.info("Converting known sites VCF to ADAM.")
 
     call_adam(job, master_ip,
               ["vcf2adam", "-only_variants", in_snps, adam_snps],
@@ -160,7 +160,7 @@ def adam_transform(job, master_ip, inputs, in_file, snp_file, hdfs_dir, out_file
         - recalibrate base quality scores
     """
 
-    log.info("Marking duplicate reads.")
+    _log.info("Marking duplicate reads.")
     call_adam(job, master_ip,
               ["transform",
                in_file,  hdfs_dir + "/mkdups.adam",
@@ -176,7 +176,7 @@ def adam_transform(job, master_ip, inputs, in_file, snp_file, hdfs_dir, out_file
     in_file_name = in_file.split("/")[-1]
     remove_file(master_ip, in_file_name + "*", spark_on_toil)
 
-    log.info("Realigning INDELs.")
+    _log.info("Realigning INDELs.")
     call_adam(job, master_ip,
               ["transform",
                hdfs_dir + "/mkdups.adam",
@@ -189,7 +189,7 @@ def adam_transform(job, master_ip, inputs, in_file, snp_file, hdfs_dir, out_file
 
     remove_file(master_ip, hdfs_dir + "/mkdups.adam*", spark_on_toil)
 
-    log.info("Recalibrating base quality scores.")
+    _log.info("Recalibrating base quality scores.")
     call_adam(job, master_ip,
               ["transform",
                hdfs_dir + "/ri.adam",
@@ -203,7 +203,7 @@ def adam_transform(job, master_ip, inputs, in_file, snp_file, hdfs_dir, out_file
 
     remove_file(master_ip, "ri.adam*", spark_on_toil)
 
-    log.info("Sorting reads and saving a single BAM file.")
+    _log.info("Sorting reads and saving a single BAM file.")
     call_adam(job, master_ip,
               ["transform",
                hdfs_dir + "/bqsr.adam",
@@ -224,7 +224,7 @@ def upload_data(job, master_ip, inputs, hdfs_name, upload_name, spark_on_toil):
     Upload file hdfsName from hdfs to s3
     """
 
-    log.info("Uploading output BAM %s to %s.", hdfs_name, upload_name)
+    _log.info("Uploading output BAM %s to %s.", hdfs_name, upload_name)
     call_conductor(job, master_ip, hdfs_name, upload_name,
                    memory=inputs.memory,
                    container='fnothaft/conductor')
