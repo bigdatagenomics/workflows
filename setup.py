@@ -66,7 +66,7 @@ check_provided('bd2k-python-lib', min_version='1.14a1.dev29' )
 check_provided('boto', min_version='2.38.0', optional=True)
 
 kwargs = dict(
-    name='toil-adam',
+    name='toil-bdg',
     version=version,
     description='A repository of genomic workflows developed by the UC Berkeley AMPLab and UCSC Computational Genomics lab that use Toil to run ADAM/BDG tools',
     author='UC Berkeley AMP Lab',
