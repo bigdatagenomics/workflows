@@ -6,7 +6,7 @@ from toil.lib.docker import dockerCall
 from toil_lib.urls import download_url
 
 
-def run_star(job, r1_id, r2_id, star_index_url, wiggle=False):
+def run_star(job, r1_id, r2_id, star_index_url, wiggle=False, sort=True):
     """
     Performs alignment of fastqs to bam via STAR
 
@@ -31,7 +31,6 @@ def run_star(job, r1_id, r2_id, star_index_url, wiggle=False):
     parameters = ['--runThreadN', str(job.cores),
                   '--genomeDir', star_index,
                   '--outFileNamePrefix', 'rna',
-                  '--outSAMtype', 'BAM', 'SortedByCoordinate',
                   '--outSAMunmapped', 'Within',
                   '--quantMode', 'TranscriptomeSAM',
                   '--outSAMattributes', 'NH', 'HI', 'AS', 'NM', 'MD',
@@ -46,6 +45,13 @@ def run_star(job, r1_id, r2_id, star_index_url, wiggle=False):
                   '--alignSJDBoverhangMin', '1',
                   '--sjdbScore', '1',
                   '--limitBAMsortRAM', '49268954168']
+    # Modify paramaters based on function arguments
+    if sort:
+        parameters.extend(['--outSAMtype', 'BAM', 'SortedByCoordinate'])
+        aligned_bam = 'rnaAligned.sortedByCoord.out.bam'
+    else:
+        parameters.extend(['--outSAMtype', 'BAM', 'Unsorted'])
+        aligned_bam = 'rnaAligned.out.bam'
     if wiggle:
         parameters.extend(['--outWigType', 'bedGraph',
                            '--outWigStrand', 'Unstranded',
@@ -60,19 +66,20 @@ def run_star(job, r1_id, r2_id, star_index_url, wiggle=False):
     # Call: STAR Mapping
     dockerCall(job=job, tool='quay.io/ucsc_cgl/star:2.4.2a--bcbd5122b69ff6ac4ef61958e47bde94001cfe80',
                workDir=work_dir, parameters=parameters)
-    # Check output bam isnt size zero
-    sorted_bam_path = os.path.join(work_dir, 'rnaAligned.sortedByCoord.out.bam')
-    assert(os.stat(sorted_bam_path).st_size > 0, 'Genome-aligned bam failed to sort. Ensure sufficient memory is free.')
+    # Check output bam isnt size zero if sorted
+    aligned_bam_path = os.path.join(work_dir, aligned_bam)
+    if sort:
+        assert(os.stat(aligned_bam_path).st_size > 0, 'Aligned bam failed to sort. Ensure sufficient memory is free.')
     # Write to fileStore
-    sorted_id = job.fileStore.writeGlobalFile(sorted_bam_path)
+    aligned_id = job.fileStore.writeGlobalFile(aligned_bam_path)
     transcriptome_id = job.fileStore.writeGlobalFile(os.path.join(work_dir, 'rnaAligned.toTranscriptome.out.bam'))
     log_id = job.fileStore.writeGlobalFile(os.path.join(work_dir, 'rnaLog.final.out'))
     sj_id = job.fileStore.writeGlobalFile(os.path.join(work_dir, 'rnaSJ.out.tab'))
     if wiggle:
         wiggle_id = job.fileStore.writeGlobalFile(os.path.join(work_dir, 'rnaSignal.UniqueMultiple.str1.out.bg'))
-        return transcriptome_id, sorted_id, wiggle_id, log_id, sj_id
+        return transcriptome_id, aligned_id, wiggle_id, log_id, sj_id
     else:
-        return transcriptome_id, sorted_id, log_id, sj_id
+        return transcriptome_id, aligned_id, log_id, sj_id
 
 
 def run_bwakit(job, config, sort=True, trim=False, mark_secondary=False):
