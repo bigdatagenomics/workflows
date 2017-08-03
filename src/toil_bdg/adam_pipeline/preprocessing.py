@@ -50,8 +50,9 @@ import yaml
 from toil.job import Job
 
 from toil_lib import require
-from toil_lib.files import copy_files, generate_file, move_files
+from toil_lib.files import generate_file, move_files
 from toil_lib.spark import spawn_spark_cluster
+from toil_lib.urls import download_url
 from toil_lib.tools.spark_tools import call_adam, \
     call_conductor, \
     MasterAddress, \
@@ -128,13 +129,19 @@ def adam_convert(job, master_ip, inputs, in_file, in_snps, adam_file, adam_snps,
     Convert input sam/bam file and known SNPs file into ADAM format
     """
 
+    add_docker_parameters = []
+    if inputs.run_local:
+        add_docker_parameters.extend(['-v',
+                                    '{}:/data'.format(inputs.local_dir)])
+
     _log.info("Converting input BAM to ADAM.")
     call_adam(job, master_ip,
               ["transform", in_file, adam_file],
               memory=inputs.memory,
               run_local=inputs.run_local,
               native_adam_path=inputs.native_adam_path,
-              container='fnothaft/adam')
+              container='fnothaft/adam',
+              add_docker_parameters=add_docker_parameters)
 
     in_file_name = in_file.split("/")[-1]
     remove_file(master_ip, in_file_name, spark_on_toil)
@@ -146,7 +153,8 @@ def adam_convert(job, master_ip, inputs, in_file, in_snps, adam_file, adam_snps,
               memory=inputs.memory,
               run_local=inputs.run_local,
               native_adam_path=inputs.native_adam_path,
-              container='fnothaft/adam')
+              container='fnothaft/adam',
+              add_docker_parameters=add_docker_parameters)
 
     in_snps_name = in_snps.split("/")[-1]
     remove_file(master_ip, in_snps_name, spark_on_toil)
@@ -160,6 +168,11 @@ def adam_transform(job, master_ip, inputs, in_file, snp_file, hdfs_dir, out_file
         - recalibrate base quality scores
     """
 
+    add_docker_parameters = []
+    if inputs.run_local:
+        add_docker_parameters.extend(['-v',
+                                    '{}:/data'.format(inputs.local_dir)])
+
     _log.info("Marking duplicate reads.")
     call_adam(job, master_ip,
               ["transform",
@@ -170,7 +183,8 @@ def adam_transform(job, master_ip, inputs, in_file, snp_file, hdfs_dir, out_file
               memory=inputs.memory,
               run_local=inputs.run_local,
               native_adam_path=inputs.native_adam_path,
-              container='fnothaft/adam')
+              container='fnothaft/adam',
+              add_docker_parameters=add_docker_parameters)
 
     #FIXME
     in_file_name = in_file.split("/")[-1]
@@ -185,7 +199,8 @@ def adam_transform(job, master_ip, inputs, in_file, snp_file, hdfs_dir, out_file
               memory=inputs.memory,
               run_local=inputs.run_local,
               native_adam_path=inputs.native_adam_path,
-              container='fnothaft/adam')
+              container='fnothaft/adam',
+              add_docker_parameters=add_docker_parameters)
 
     remove_file(master_ip, hdfs_dir + "/mkdups.adam*", spark_on_toil)
 
@@ -199,7 +214,8 @@ def adam_transform(job, master_ip, inputs, in_file, snp_file, hdfs_dir, out_file
               memory=inputs.memory,
               run_local=inputs.run_local,
               native_adam_path=inputs.native_adam_path,
-              container='fnothaft/adam')
+              container='fnothaft/adam',
+              add_docker_parameters=add_docker_parameters)
 
     remove_file(master_ip, "ri.adam*", spark_on_toil)
 
@@ -212,7 +228,8 @@ def adam_transform(job, master_ip, inputs, in_file, snp_file, hdfs_dir, out_file
               memory=inputs.memory,
               run_local=inputs.run_local,
               native_adam_path=inputs.native_adam_path,
-              container='fnothaft/adam')
+              container='fnothaft/adam',
+              add_docker_parameters=add_docker_parameters)
 
     remove_file(master_ip, "bqsr.adam*", spark_on_toil)
 
@@ -262,7 +279,8 @@ def download_run_and_upload(job, master_ip, inputs, spark_on_toil):
         if not inputs.run_local:
             download_data(job, master_ip, inputs, inputs.dbsnp, inputs.sample, hdfs_snps, hdfs_bam)
         else:
-            copy_files([inputs.sample, inputs.dbsnp], inputs.local_dir)
+            download_url(job, inputs.sample, work_dir=inputs.local_dir)
+            download_url(job, inputs.dbsnp, work_dir=inputs.local_dir)
 
         adam_input = hdfs_prefix + ".adam"
         adam_snps = hdfs_dir + "/snps.var.adam"
@@ -271,13 +289,14 @@ def download_run_and_upload(job, master_ip, inputs, spark_on_toil):
         adam_output = hdfs_prefix + ".processed.bam"
         adam_transform(job, master_ip, inputs, adam_input, adam_snps, hdfs_dir, adam_output, spark_on_toil)
 
-        out_file = inputs.output_dir + "/" + sample_name + inputs.suffix + ".bam"
-
-        if not inputs.run_local:
-            upload_data(job, master_ip, inputs, adam_output, out_file, spark_on_toil)
-        else:
-            local_adam_output = "%s/%s.processed.bam" % (inputs.local_dir, sample_name)
-            move_files([local_adam_output], inputs.output_dir)
+        if inputs.output_dir:
+            out_file = inputs.output_dir + "/" + sample_name + inputs.suffix + ".bam"
+            
+            if not inputs.run_local:
+                upload_data(job, master_ip, inputs, adam_output, out_file, spark_on_toil)
+            else:
+                local_adam_output = "%s/%s.processed.bam" % (inputs.local_dir, sample_name)
+                move_files([local_adam_output], inputs.output_dir)
 
         remove_file(master_ip, hdfs_subdir, spark_on_toil)
     except:
@@ -351,8 +370,22 @@ def main():
                             help='full path where final results will be output')
     parser_run.add_argument('-s', '--suffix', default='',
                             help='Additional suffix to add to the names of the output files')
+    parser_local = subparsers.add_parser('run-local', help='Runs the ADAM preprocessing pipeline in local mode')
+    parser_local.add_argument('--sample', help='The S3 URL or local path to the input SAM or BAM file.'
+                            'NOTE: unlike other pipelines, we do not support ftp://, gnos://, etc. schemes.')
+    parser_local.add_argument('--dbsnp', help='The S3 URL or local path to the input dbSNP VCF.'
+                            'NOTE: unlike other pipelines, we do not support ftp://, gnos://, etc. schemes.')
+    parser_local.add_argument('--output-dir', required=False, default=None,
+                              help='full path where final results will be output')
+    parser_local.add_argument('--memory', required=True, default=None,
+                              help='Amount of memory to allocate for ADAM')
+    parser_local.add_argument('--local-dir', required=True,
+                              help='Local temporary directory to use.')
+    parser_local.add_argument('-s', '--suffix', default='',
+                              help='Additional suffix to add to the names of the output files')
 
     Job.Runner.addToilOptions(parser_run)
+    Job.Runner.addToilOptions(parser_local)
     args = parser.parse_args()
     cwd = os.getcwd()
     if args.command == 'generate-config':
@@ -378,6 +411,19 @@ def main():
 
         Job.Runner.startToil(Job.wrapJobFn(static_adam_preprocessing_dag, inputs,
                                            args.sample, args.output_dir), args)
+    elif args.command == 'run-local':
+
+        config = {'run_local': True,
+                  'local_dir': args.local_dir,
+                  'memory': args.memory,
+                  'master_ip': None,
+                  'dbsnp': args.dbsnp,
+                  'native_adam_path': None}
+        inputs = argparse.Namespace(**config)
+
+        Job.Runner.startToil(Job.wrapJobFn(static_adam_preprocessing_dag, inputs,
+                                           args.sample, args.output_dir), args)
+
 
 if __name__ == "__main__":
     main()
