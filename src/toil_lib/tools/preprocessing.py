@@ -108,7 +108,7 @@ def run_samtools_sort(job, bam):
     work_dir = job.fileStore.getLocalTempDir()
     job.fileStore.readGlobalFile(bam, os.path.join(work_dir, 'input.bam'))
     command = ['sort',
-               '-@', str(job.cores),
+               '-@', str(int(job.cores)),
                '-o', '/data/output.bam',
                '/data/input.bam']
 
@@ -481,7 +481,7 @@ def run_base_recalibration(job, bam, bai, ref, ref_dict, fai, dbsnp, mills, unsa
 
     # Call: GATK -- BaseRecalibrator
     parameters = ['-T', 'BaseRecalibrator',
-                  '-nct', str(job.cores),
+                  '-nct', str(int(job.cores)),
                   '-R', '/data/ref.fasta',
                   '-I', '/data/input.bam',
                   # Recommended known sites:
@@ -537,7 +537,7 @@ def apply_bqsr_recalibration(job, table, bam, bai, ref, ref_dict, fai, unsafe=Fa
 
     # Call: GATK -- PrintReads
     parameters = ['-T', 'PrintReads',
-                  '-nct', str(job.cores),
+                  '-nct', str(int(job.cores)),
                   '-R', '/data/ref.fasta',
                   '-I', '/data/input.bam',
                   '-BQSR', '/data/recal.table',
