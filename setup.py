@@ -83,7 +83,11 @@ kwargs = dict(
             'toil-adam = toil_bdg.adam_pipeline.preprocessing:main',
             'toil-avocado = toil_bdg.avocado_pipeline.variant_calling:main',
             'toil-cannoli-bwa = toil_bdg.cannoli_pipeline.bwa_alignment:main',
-            'toil-bdg-gatk3-benchmark = toil_bdg.benchmarking.gatk3_pipeline.preprocessing:main']})
+            'toil-bdg-gatk3-benchmark = toil_bdg.benchmarking.gatk3_pipeline.preprocessing:main',
+            'toil-bdg-mkdups-benchmark = toil_bdg.benchmarking.single_node.mkdups:main',
+            'toil-bdg-sort-benchmark = toil_bdg.benchmarking.single_node.sort:main',
+            'toil-bdg-ri-benchmark = toil_bdg.benchmarking.single_node.realign_indels:main',
+            'toil-bdg-bqsr-benchmark = toil_bdg.benchmarking.single_node.bqsr:main']})
 
 
 class PyTest(TestCommand):
