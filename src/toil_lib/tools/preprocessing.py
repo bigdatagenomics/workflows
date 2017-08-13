@@ -225,20 +225,21 @@ def run_sambamba_markdup(job, bam):
     return job.fileStore.writeGlobalFile(os.path.join(work_dir, 'output.bam'))
 
 
-def run_samblaster(job, bam):
+def run_samblaster(job, sam):
     """
     Marks reads as PCR duplicates using SAMBLASTER
 
     :param JobFunctionWrappingJob job: passed automatically by Toil
-    :param str bam: FileStoreID for BAM file
-    :return: FileStoreID for sorted BAM file
+    :param str sam: FileStoreID for SAM file
+    :return: FileStoreID for deduped SAM file
     :rtype: str
     """
     work_dir = job.fileStore.getLocalTempDir()
-    job.fileStore.readGlobalFile(bam, os.path.join(work_dir, 'input.bam'))
+    job.fileStore.readGlobalFile(sam, os.path.join(work_dir, 'input.sam'))
     command = ['/usr/local/bin/samblaster',
-               '-s', '/data/input.bam',
-               '-o', '/data/output.bam']
+               '-i', '/data/input.sam',
+               '-o', '/data/output.sam',
+               '--ignoreUnmated']
 
     start_time = time.time()
     dockerCall(job=job, workDir=work_dir,
@@ -246,7 +247,7 @@ def run_samblaster(job, bam):
                tool='quay.io/biocontainers/samblaster:0.1.24--0')
     end_time = time.time()
     _log_runtime(job, start_time, end_time, "SAMBLASTER")
-    return job.fileStore.writeGlobalFile(os.path.join(work_dir, 'output.bam'))
+    return job.fileStore.writeGlobalFile(os.path.join(work_dir, 'output.sam'))
 
 
 def run_picard_create_sequence_dictionary(job, ref_id):
