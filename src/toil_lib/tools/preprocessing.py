@@ -168,6 +168,31 @@ def run_samtools_rmdup(job, bam):
     return job.fileStore.writeGlobalFile(os.path.join(work_dir, 'output.bam'))
 
 
+def run_sambamba_index(job, bam, sort_by_name=False):
+    """
+    Indexes a BAM file using Sambamba.
+
+    :param JobFunctionWrappingJob job: passed automatically by Toil
+    :param str bam: FileStoreID for BAM file
+    :return: FileStoreID for sorted BAM file
+    :rtype: str
+    """
+    work_dir = job.fileStore.getLocalTempDir()
+    job.fileStore.readGlobalFile(bam, os.path.join(work_dir, 'input.bam'))
+    command = ['/usr/local/bin/sambamba',
+               'index',
+               '-t', str(int(job.cores)),
+               '/data/input.bam']
+
+    start_time = time.time()
+    dockerCall(job=job, workDir=work_dir,
+               parameters=command,
+               tool='quay.io/biocontainers/sambamba:0.6.6--0')
+    end_time = time.time()
+    _log_runtime(job, start_time, end_time, "sambamba index")
+    return job.fileStore.writeGlobalFile(os.path.join(work_dir, 'input.bam.bai'))
+
+
 def run_sambamba_sort(job, bam, sort_by_name=False):
     """
     Sorts BAM file using Sambamba sort
