@@ -87,7 +87,8 @@ kwargs = dict(
             'toil-bdg-mkdups-benchmark = toil_bdg.benchmarking.single_node.mkdups:main',
             'toil-bdg-sort-benchmark = toil_bdg.benchmarking.single_node.sort:main',
             'toil-bdg-ri-benchmark = toil_bdg.benchmarking.single_node.realign_indels:main',
-            'toil-bdg-bqsr-benchmark = toil_bdg.benchmarking.single_node.bqsr:main']})
+            'toil-bdg-bqsr-benchmark = toil_bdg.benchmarking.single_node.bqsr:main',
+            'toil-bdg-vc-benchmark = toil_bdg.benchmarking.single_node.align_and_call:main']})
 
 
 class PyTest(TestCommand):
