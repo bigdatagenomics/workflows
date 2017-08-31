@@ -61,12 +61,12 @@ def check_provided(distribution, min_version, max_version=None, optional=False):
         return version
 
 
-toil_version = check_provided('toil', min_version='3.7.0a1.dev392', max_version='3.7.0a1.dev392')
+toil_version = check_provided('toil', min_version='3.7.0a1.dev392', max_version='3.10.0')
 check_provided('bd2k-python-lib', min_version='1.14a1.dev29' )
 check_provided('boto', min_version='2.38.0', optional=True)
 
 kwargs = dict(
-    name='toil-bdg',
+    name='bdgenomics.pipelines',
     version=version,
     description='A repository of genomic workflows developed by the UC Berkeley AMPLab and UCSC Computational Genomics lab that use Toil to run ADAM/BDG tools',
     author='UC Berkeley AMP Lab',
@@ -76,18 +76,17 @@ kwargs = dict(
         'pyyaml==3.11'],
     tests_require=[
         'pytest==2.8.3'],
-    package_dir={'': 'src'},
-    packages=find_packages('src'),
     entry_points={
         'console_scripts': [
-            'toil-adam = toil_bdg.adam_pipeline.preprocessing:main',
-            'toil-avocado = toil_bdg.avocado_pipeline.variant_calling:main',
-            'toil-cannoli-bwa = toil_bdg.cannoli_pipeline.bwa_alignment:main',
-            'toil-bdg-gatk3-benchmark = toil_bdg.benchmarking.gatk3_pipeline.preprocessing:main',
-            'toil-bdg-mkdups-benchmark = toil_bdg.benchmarking.single_node.mkdups:main',
-            'toil-bdg-sort-benchmark = toil_bdg.benchmarking.single_node.sort:main',
-            'toil-bdg-ri-benchmark = toil_bdg.benchmarking.single_node.realign_indels:main',
-            'toil-bdg-bqsr-benchmark = toil_bdg.benchmarking.single_node.bqsr:main']})
+            'bdg-adam = bdgenomics.pipeline.adam_pipeline.preprocessing:main',
+            'bdg-avocado = bdgenomics.pipeline.avocado_pipeline.variant_calling:main',
+            'bdg-cannoli-bwa = bdgenomics.pipeline.cannoli_pipeline.bwa_alignment:main',
+            'bdg-gatk3-benchmark = bdgenomics.pipeline.benchmarking.gatk3_pipeline.preprocessing:main',
+            'bdg-mkdups-benchmark = bdgenomics.pipeline.benchmarking.single_node.mkdups:main',
+            'bdg-sort-benchmark = bdgenomics.pipeline.benchmarking.single_node.sort:main',
+            'bdg-ri-benchmark = bdgenomics.pipeline.benchmarking.single_node.realign_indels:main',
+            'bdg-bqsr-benchmark = bdgenomics.pipeline.benchmarking.single_node.bqsr:main']},
+    packages=find_packages())
 
 
 class PyTest(TestCommand):
