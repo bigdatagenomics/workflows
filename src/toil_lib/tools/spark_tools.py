@@ -76,12 +76,14 @@ def _make_parameters(master_ip, default_parameters, memory, arguments, override_
     # if the user hasn't provided overrides, set our defaults
     parameters = []
     if memory is not None:
-        parameters = ["--master", "spark://%s:%s" % (master_ip, SPARK_MASTER_PORT),
-                      "--conf", "spark.driver.memory=%sg" % memory,
-                      "--conf", "spark.executor.memory=%sg" % memory,
-                      "--conf", ("spark.hadoop.fs.default.name=hdfs://%s:%s" % (master_ip, HDFS_MASTER_PORT))]
+        parameters = ["--conf", "spark.driver.memory=%sg" % memory,
+                      "--conf", "spark.executor.memory=%sg" % memory]
     else:
         parameters.extend(override_parameters)
+
+    if master_ip:
+        parameters.extend(["--master", "spark://%s:%s" % (master_ip, SPARK_MASTER_PORT),
+                           "--conf", ("spark.hadoop.fs.default.name=hdfs://%s:%s" % (master_ip, HDFS_MASTER_PORT))])
 
     # add the tool specific spark parameters
     parameters.extend(default_parameters)
@@ -190,4 +192,55 @@ def call_adam(job, master_ip, arguments,
         check_call([os.path.join(native_adam_path, "bin/adam-submit")] +
                    default_params +
                    arguments)
+
+def call_deca(job, master_ip, arguments,
+              memory=None,
+              override_parameters=None,
+              work_dir=None,
+              run_local=False):
+    """
+    Invokes the DECA container. Find DECA at https://github.com/bigdatagenomics/deca.
+
+    :param toil.Job.job job: The Toil Job calling this function
+    :param masterIP: The Spark leader IP address.
+    :param arguments: Arguments to pass to ADAM.
+    :param memory: Gigabytes of memory to provision for Spark driver/worker.
+    :param override_parameters: Parameters passed by the user, that override our defaults.
+    :param run_local: If true, runs Spark with the --master local[*] setting, which uses
+      all cores on the local machine. The master_ip will be disregarded.
+
+    :type masterIP: MasterAddress
+    :type arguments: list of string
+    :type memory: int or None
+    :type override_parameters: list of string or None
+    :type native_adam_path: string or None
+    :type run_local: boolean
+    """
+    if run_local:
+        master = ["--master", "local[*]"]
+    else:
+        master = ["--master",
+                  ("spark://%s:%s" % (master_ip, SPARK_MASTER_PORT)),
+                  "--conf", ("spark.hadoop.fs.default.name=hdfs://%s:%s" % (master_ip, HDFS_MASTER_PORT)),]
+
+    default_params = (master + [
+            # set max result size to unlimited, see #177
+            "--conf", "spark.driver.maxResultSize=0"])
+
+    docker_parameters = []
+    if master_ip:
+        docker_parameters = master_ip.docker_parameters(["--net=host"])
+    docker_parameters.extend(['--log-driver', 'none'])
+
+    if work_dir:
+        docker_parameters.extend(['-v', '%s:/data' % work_dir])
+    
+    dockerCall(job=job,
+               tool="quay.io/ucsc_cgl/deca",
+               dockerParameters=docker_parameters,
+               parameters=_make_parameters(master_ip,
+                                           default_params,
+                                           memory,
+                                           arguments,
+                                           override_parameters))
 
