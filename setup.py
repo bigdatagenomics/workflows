@@ -81,6 +81,7 @@ kwargs = dict(
     entry_points={
         'console_scripts': [
             'toil-adam = toil_bdg.adam_pipeline.preprocessing:main',
+            'toil-deca = toil_bdg.deca_pipeline.call_cnvs:main',
             'toil-avocado = toil_bdg.avocado_pipeline.variant_calling:main',
             'toil-cannoli-bwa = toil_bdg.cannoli_pipeline.bwa_alignment:main',
             'toil-bdg-gatk3-benchmark = toil_bdg.benchmarking.gatk3_pipeline.preprocessing:main',
