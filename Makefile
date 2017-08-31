@@ -53,7 +53,7 @@ clean_prepare: check_venv
 
 
 develop: check_venv
-	$(pip) install -e .$(extras)
+	$(pip) install .$(extras)
 clean_develop: check_venv
 	- rm -rf src/*.egg-info
 

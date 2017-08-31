@@ -7,7 +7,7 @@ ADAM/Spark pipeline
 """
 
 import os.path
-from subprocess import check_call
+from subprocess import check_call, check_output
 
 from toil.lib.docker import dockerCall
 
@@ -197,7 +197,9 @@ def call_deca(job, master_ip, arguments,
               memory=None,
               override_parameters=None,
               work_dir=None,
-              run_local=False):
+              run_local=False,
+              aws_access_key_id=None,
+              aws_secret_access_key=None):
     """
     Invokes the DECA container. Find DECA at https://github.com/bigdatagenomics/deca.
 
@@ -219,24 +221,51 @@ def call_deca(job, master_ip, arguments,
     if run_local:
         master = ["--master", "local[*]"]
     else:
-        master = ["--master",
-                  ("spark://%s:%s" % (master_ip, SPARK_MASTER_PORT)),
-                  "--conf", ("spark.hadoop.fs.default.name=hdfs://%s:%s" % (master_ip, HDFS_MASTER_PORT)),]
+        '''
+        hostname = check_output(["hostname", "-i"])[:-1]
+        master = ["--conf", "spark.driver.host=%s" % hostname]
+        '''
+        master = []
+        pass
 
     default_params = (master + [
-            # set max result size to unlimited, see #177
-            "--conf", "spark.driver.maxResultSize=0"])
+        # set max result size to unlimited, see #177
+        "--conf", "spark.driver.maxResultSize=0",
+        "--conf", "spark.hadoop.hadoopbam.bam.enable-bai-splitter=true",
+        "--packages", "com.amazonaws:aws-java-sdk-pom:1.10.34,org.apache.hadoop:hadoop-aws:2.7.4",
+        "--conf", "spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem"])
 
-    docker_parameters = []
-    if master_ip:
-        docker_parameters = master_ip.docker_parameters(["--net=host"])
-    docker_parameters.extend(['--log-driver', 'none'])
+    docker_parameters = ['--log-driver', 'none',
+                         '--net=host']
+
+    if aws_access_key_id:
+
+        require(aws_secret_access_key,
+                'If AWS access key is passed, secret key must be defined')
+        
+        docker_parameters.extend(['-e', 'AWS_ACCESS_KEY_ID=%s' % aws_access_key_id,
+                                  '-e', 'AWS_SECRET_ACCESS_KEY=%s' % aws_secret_access_key])
+
+        default_params.extend(
+            ["--packages", "com.amazonaws:aws-java-sdk-pom:1.10.34,org.apache.hadoop:hadoop-aws:2.7.4",
+             "--conf", "spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem"])
+
+        for scheme in ['s3', 's3n']:
+            default_params.extend([
+                "--conf", "spark.hadoop.fs.%s.awsAccessKeyId=%s" % (scheme, aws_access_key_id),
+                "--conf", "spark.hadoop.fs.%s.awsSecretAccessKey=%s" % (scheme, aws_secret_access_key)])
+
+        default_params.extend([
+            "--conf", "spark.hadoop.fs.s3a.access.key=%s" % aws_access_key_id,
+            "--conf", "spark.hadoop.fs.s3a.secret.key=%s" % aws_secret_access_key,
+            "--conf", "spark.executorEnv.AWS_ACCESS_KEY_ID=%s" % aws_access_key_id,
+            "--conf", "spark.executorEnv.AWS_SECRET_ACCESS_KEY=%s" % aws_secret_access_key])
 
     if work_dir:
         docker_parameters.extend(['-v', '%s:/data' % work_dir])
     
     dockerCall(job=job,
-               tool="quay.io/ucsc_cgl/deca",
+               tool="quay.io/ucsc_cgl/deca:0.1.0--7d13833a1220001481c4de0489e893c93ee3310f",
                dockerParameters=docker_parameters,
                parameters=_make_parameters(master_ip,
                                            default_params,
