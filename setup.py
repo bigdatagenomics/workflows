@@ -73,13 +73,15 @@ kwargs = dict(
     author_email='adam-developers@googlegroups.com',
     url="https://github.com/bigdatagenomics/toil-adam",
     install_requires=[
-        'pyyaml==3.11'],
+        'pyyaml==3.11',
+        'toil_lib==1.1.8'],
     tests_require=[
         'pytest==2.8.3'],
     entry_points={
         'console_scripts': [
             'bdg-adam = bdgenomics.workflows.adam_pipeline.preprocessing:main',
             'bdg-avocado = bdgenomics.workflows.avocado_pipeline.variant_calling:main',
+            'bdg-deca = bdgenomics.workflows.deca_pipeline.call_cnvs:main',
             'bdg-cannoli-bwa = bdgenomics.workflows.cannoli_pipeline.bwa_alignment:main',
             'bdg-gatk3-benchmark = bdgenomics.workflows.benchmarking.gatk3_pipeline.preprocessing:main',
             'bdg-mkdups-benchmark = bdgenomics.workflows.benchmarking.single_node.mkdups:main',
