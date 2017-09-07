@@ -66,7 +66,7 @@ check_provided('bd2k-python-lib', min_version='1.14a1.dev29' )
 check_provided('boto', min_version='2.38.0', optional=True)
 
 kwargs = dict(
-    name='bdgenomics.pipelines',
+    name='bdgenomics.workflows',
     version=version,
     description='A repository of genomic workflows developed by the UC Berkeley AMPLab and UCSC Computational Genomics lab that use Toil to run ADAM/BDG tools',
     author='UC Berkeley AMP Lab',
@@ -78,14 +78,14 @@ kwargs = dict(
         'pytest==2.8.3'],
     entry_points={
         'console_scripts': [
-            'bdg-adam = bdgenomics.pipeline.adam_pipeline.preprocessing:main',
-            'bdg-avocado = bdgenomics.pipeline.avocado_pipeline.variant_calling:main',
-            'bdg-cannoli-bwa = bdgenomics.pipeline.cannoli_pipeline.bwa_alignment:main',
-            'bdg-gatk3-benchmark = bdgenomics.pipeline.benchmarking.gatk3_pipeline.preprocessing:main',
-            'bdg-mkdups-benchmark = bdgenomics.pipeline.benchmarking.single_node.mkdups:main',
-            'bdg-sort-benchmark = bdgenomics.pipeline.benchmarking.single_node.sort:main',
-            'bdg-ri-benchmark = bdgenomics.pipeline.benchmarking.single_node.realign_indels:main',
-            'bdg-bqsr-benchmark = bdgenomics.pipeline.benchmarking.single_node.bqsr:main']},
+            'bdg-adam = bdgenomics.workflows.adam_pipeline.preprocessing:main',
+            'bdg-avocado = bdgenomics.workflows.avocado_pipeline.variant_calling:main',
+            'bdg-cannoli-bwa = bdgenomics.workflows.cannoli_pipeline.bwa_alignment:main',
+            'bdg-gatk3-benchmark = bdgenomics.workflows.benchmarking.gatk3_pipeline.preprocessing:main',
+            'bdg-mkdups-benchmark = bdgenomics.workflows.benchmarking.single_node.mkdups:main',
+            'bdg-sort-benchmark = bdgenomics.workflows.benchmarking.single_node.sort:main',
+            'bdg-ri-benchmark = bdgenomics.workflows.benchmarking.single_node.realign_indels:main',
+            'bdg-bqsr-benchmark = bdgenomics.workflows.benchmarking.single_node.bqsr:main']},
     packages=find_packages())
 
 
