@@ -51,9 +51,9 @@ from toil.job import Job
 
 from toil_lib import require
 from toil_lib.files import generate_file, move_files
-from toil_lib.spark import spawn_spark_cluster
+from bdgenomics.workflows.spark import spawn_spark_cluster
 from toil_lib.urls import download_url
-from toil_lib.tools.spark_tools import call_adam, \
+from bdgenomics.workflows.tools.spark_tools import call_adam, \
     call_conductor, \
     MasterAddress, \
     HDFS_MASTER_PORT, \

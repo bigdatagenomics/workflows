@@ -22,7 +22,7 @@ from unittest import TestCase, skip
 from toil.common import Toil
 from toil.job import Job
 
-from toil_lib.spark import spawn_spark_cluster
+from bdgenomics.workflows.spark import spawn_spark_cluster
 from toil_lib.test import needs_spark
 
 def _count(job, workers):
