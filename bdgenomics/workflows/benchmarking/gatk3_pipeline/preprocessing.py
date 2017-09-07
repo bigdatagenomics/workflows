@@ -50,7 +50,7 @@ import yaml
 from toil.job import Job
 
 from toil_lib import require
-from toil_lib.tools.preprocessing import run_gatk_preprocessing, \
+from bdgenomics.workflows.tools.preprocessing import run_gatk_preprocessing, \
     run_picard_create_sequence_dictionary, \
     run_samtools_sort, \
     run_samtools_faidx, \

@@ -20,10 +20,10 @@ import os
 
 from toil.job import Job
 
-from toil_lib.tools.preprocessing import run_picard_sort, \
+from bdgenomics.workflows.tools.preprocessing import run_picard_sort, \
     run_samtools_sort, \
     run_sambamba_sort
-from toil_lib.tools.spark_tools import call_adam
+from bdgenomics.workflows.tools.spark_tools import call_adam
 from toil_lib.urls import download_url_job
 
 _log = logging.getLogger(__name__)

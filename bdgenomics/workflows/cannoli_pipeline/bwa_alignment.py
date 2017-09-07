@@ -32,8 +32,8 @@ from toil.job import Job
 
 from toil_lib import require
 from toil_lib.files import copy_files, generate_file, move_files
-from toil_lib.spark import spawn_spark_cluster
-from toil_lib.tools.spark_tools import call_adam, \
+from bdgenomics.workflows.spark import spawn_spark_cluster
+from bdgenomics.workflows.tools.spark_tools import call_adam, \
     call_cannoli, \
     call_conductor, \
     MasterAddress, \

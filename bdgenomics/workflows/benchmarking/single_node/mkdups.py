@@ -20,14 +20,14 @@ import os
 
 from toil.job import Job
 
-from toil_lib.tools.preprocessing import picard_mark_duplicates, \
+from bdgenomics.workflows.tools.preprocessing import picard_mark_duplicates, \
     run_sambamba_markdup, \
     run_sambamba_sort, \
     run_samblaster, \
     run_samtools_index, \
     run_samtools_rmdup, \
     run_samtools_view
-from toil_lib.tools.spark_tools import call_adam
+from bdgenomics.workflows.tools.spark_tools import call_adam
 from toil_lib.urls import download_url_job
 
 _log = logging.getLogger(__name__)
