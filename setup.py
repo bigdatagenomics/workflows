@@ -74,7 +74,7 @@ kwargs = dict(
     url="https://github.com/bigdatagenomics/toil-adam",
     install_requires=[
         'pyyaml==3.11',
-        'toil_lib==1.1.8'],
+        'toil-lib==1.1.8'],
     tests_require=[
         'pytest==2.8.3'],
     entry_points={
