@@ -69,16 +69,8 @@ test: check_venv
 	$(python) setup.py test --pytest-args "-vv $(tests) --junitxml=test-report.xml"
 
 
-pypi: check_venv check_clean_working_copy check_running_on_jenkins
-	test "$$ghprbActualCommit" \
-	&& echo "We're building a PR, skipping PyPI." || ( \
-		set -x \
-		&& tag_build=`$(python) -c 'pass;\
-			from version import version as v;\
-			from pkg_resources import parse_version as pv;\
-			import os;\
-			print "--tag-build=.dev" + os.getenv("BUILD_NUMBER") if pv(v).is_prerelease else ""'` \
-		&& $(python) setup.py egg_info $$tag_build sdist bdist_egg upload )
+pypi: check_venv check_clean_working_copy
+	$(python) setup.py egg_info sdist bdist_egg upload
 clean_pypi:
 	- rm -rf build/
 
