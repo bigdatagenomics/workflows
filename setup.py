@@ -104,7 +104,7 @@ def importVersion():
 version = importVersion()
 print(version, sys.stderr)
 
-toil_version = check_provided('toil', min_version='3.7.0a1.dev392', max_version='3.10.0')
+toil_version = check_provided('toil', min_version='3.7.0a1.dev392', max_version='3.12.0')
 
 kwargs = dict(
     name='bdgenomics.workflows',
