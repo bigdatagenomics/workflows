@@ -1,11 +1,13 @@
-# Copyright (C) 2015 UCSC Computational Genomics Lab
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
+# Licensed to Big Data Genomics (BDG) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The BDG licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+# 
 #     http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -60,18 +62,58 @@ def check_provided(distribution, min_version, max_version=None, optional=False):
     else:
         return version
 
+def importVersion():
+    """
+    Load and return the module object for bdgenomics/workflows/version.py, generating it from the template if
+    required.
+    """
 
-toil_version = check_provided('toil', min_version='3.7.0a1.dev392', max_version='3.10.0')
-check_provided('bd2k-python-lib', min_version='1.14a1.dev29' )
-check_provided('boto', min_version='2.38.0', optional=True)
+    try:
+        # Attempt to load the template first. It only exists in a working copy cloned via git.
+        import version_template
+    except ImportError:
+        # If loading the template fails we must be in a unpacked source distribution and
+        # src/toil/version.py will already exist.
+        pass
+    else:
+        # Use the template to generate src/toil/version.py
+        import os
+        import errno
+        from tempfile import NamedTemporaryFile
+
+        new = version_template.expand_()
+
+        print(new, sys.stderr)
+        
+        try:
+            with open('bdgenomics/workflows/version.py') as f:
+                old = f.read()
+        except IOError as e:
+            if e.errno == errno.ENOENT:
+                old = None
+            else:
+                raise
+
+        if old != new:
+            with NamedTemporaryFile(dir='bdgenomics/workflows', prefix='version.py.', delete=False) as f:
+                f.write(new)
+            os.rename(f.name, 'bdgenomics/workflows/version.py')
+
+    import bdgenomics.workflows.version
+    return bdgenomics.workflows.version
+
+version = importVersion()
+print(version, sys.stderr)
+
+toil_version = "3.7.0" # check_provided('toil', min_version='3.7.0a1.dev392', max_version='3.10.0')
 
 kwargs = dict(
     name='bdgenomics.workflows',
-    version=version,
+    version=version.distVersion,
     description='A repository of genomic workflows developed by the UC Berkeley AMPLab and UCSC Computational Genomics lab that use Toil to run ADAM/BDG tools',
     author='UC Berkeley AMP Lab',
     author_email='adam-developers@googlegroups.com',
-    url="https://github.com/bigdatagenomics/toil-adam",
+    url="https://github.com/bigdatagenomics/workflows",
     install_requires=[
         'pyyaml==3.11',
         'toil-lib==1.1.8'],
@@ -88,38 +130,7 @@ kwargs = dict(
             'bdg-sort-benchmark = bdgenomics.workflows.benchmarking.single_node.sort:main',
             'bdg-ri-benchmark = bdgenomics.workflows.benchmarking.single_node.realign_indels:main',
             'bdg-bqsr-benchmark = bdgenomics.workflows.benchmarking.single_node.bqsr:main']},
-    packages=find_packages())
-
-
-class PyTest(TestCommand):
-    user_options = [('pytest-args=', 'a', "Arguments to pass to py.test")]
-
-    def initialize_options(self):
-        TestCommand.initialize_options(self)
-        self.pytest_args = []
-
-    def finalize_options(self):
-        TestCommand.finalize_options(self)
-        self.test_args = []
-        self.test_suite = True
-
-    def run_tests(self):
-        import pytest
-        # Sanitize command line arguments to avoid confusing Toil code attempting to parse them
-        sys.argv[1:] = []
-        errno = pytest.main(self.pytest_args)
-        sys.exit(errno)
-
-kwargs['cmdclass'] = {'test': PyTest}
+    packages=find_packages(),
+    classifiers=["License :: OSI Approved :: Apache Software License"])
 
 setup(**kwargs)
-
-print("\n\n"
-      "Thank you for installing toil-adam! If you want to run Toil on a cluster in a cloud, please reinstall it "
-      "with the appropriate extras. To install AWS/EC2 support for example, run "
-      "\n\n"
-      "pip install toil[aws,mesos]==%s"
-      "\n\n"
-      "on every EC2 instance. Refer to Toil's documentation at http://toil.readthedocs.io/en/latest/installation.html "
-      "for more information."
-      % toil_version)
