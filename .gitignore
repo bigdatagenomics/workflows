@@ -3,6 +3,9 @@
 /src/*.egg-info
 .cache/
 .eggs/
+*egg*
 test-report.xml
 __pycache__
 venv/
+*~
+*#*
