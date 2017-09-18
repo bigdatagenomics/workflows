@@ -53,9 +53,10 @@ clean_prepare: check_venv
 
 
 develop: check_venv
-	$(pip) install .$(extras)
+	$(pip) install -e .$(extras)
 clean_develop: check_venv
 	- rm -rf src/*.egg-info
+	- rm -f bdgenomics/workflows/version.py
 
 
 sdist: check_venv
