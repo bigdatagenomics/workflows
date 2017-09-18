@@ -20,7 +20,6 @@ import sys
 
 from setuptools import find_packages, setup
 from setuptools.command.test import test as TestCommand
-from version import version
 from pkg_resources import parse_version, require, DistributionNotFound
 
 def check_provided(distribution, min_version, max_version=None, optional=False):
@@ -105,7 +104,7 @@ def importVersion():
 version = importVersion()
 print(version, sys.stderr)
 
-toil_version = "3.7.0" # check_provided('toil', min_version='3.7.0a1.dev392', max_version='3.10.0')
+toil_version = check_provided('toil', min_version='3.7.0a1.dev392', max_version='3.10.0')
 
 kwargs = dict(
     name='bdgenomics.workflows',
