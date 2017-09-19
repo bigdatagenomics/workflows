@@ -47,3 +47,5 @@ To install from source::
   $ make develop
   $
   $ bdg-deca
+
+Currently, we only support Python 2. Python 3 support is forthcoming.
