@@ -273,3 +273,196 @@ def call_deca(job, master_ip, arguments,
                                            arguments,
                                            override_parameters))
 
+
+def call_mango_browser(job, master_ip, arguments,
+              host='127.0.0.1',
+              port=8080,
+              memory=None,
+              override_parameters=None,
+              work_dir=None,
+              run_local=False,
+              run_mac=False,
+              aws_access_key_id=None,
+              aws_secret_access_key=None):
+    """
+    Invokes the Mango browsercontainer. Find mango at https://github.com/bigdatagenomics/mango.
+
+    :param toil.Job.job job: The Toil Job calling this function
+    :param masterIP: The Spark leader IP address.
+    :param arguments: Arguments to pass to Mango.
+    :param memory: Gigabytes of memory to provision for Spark driver/worker.
+    :param override_parameters: Parameters passed by the user, that override our defaults.
+    :param run_local: If true, runs Spark with the --master local[*] setting, which uses
+      all cores on the local machine. The master_ip will be disregarded.
+
+    :type masterIP: MasterAddress
+    :type arguments: list of string
+    :type memory: int or None
+    :type override_parameters: list of string or None
+    :type native_adam_path: string or None
+    :type run_local: boolean
+    """
+
+    if run_local:
+        master = ["--master", "local[*]"]
+    else:
+        '''
+        hostname = check_output(["hostname", "-i"])[:-1]
+        master = ["--conf", "spark.driver.host=%s" % hostname]
+        '''
+        master = []
+        pass
+
+    default_params = (master + [
+        # set max result size to unlimited, see #177
+        "--conf", "spark.driver.maxResultSize=0",
+        "--conf", "spark.hadoop.hadoopbam.bam.enable-bai-splitter=true",
+        # "--packages", "com.amazonaws:aws-java-sdk-pom:1.10.34,org.apache.hadoop:hadoop-aws:2.7.4", TODO download failing
+        "--conf", "spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem"])
+
+    docker_parameters = []
+
+    if not run_mac:
+        docker_parameters.extend(['--net=host']) # for accessing localhost
+    else:
+        # port forwarding because we have not set net host
+        endpoint = "{}:8080".format(port)
+        docker_parameters.extend(['-p', endpoint])
+
+    if aws_access_key_id:
+
+        require(aws_secret_access_key,
+                'If AWS access key is passed, secret key must be defined')
+
+        docker_parameters.extend(['-e', 'AWS_ACCESS_KEY_ID=%s' % aws_access_key_id,
+                                  '-e', 'AWS_SECRET_ACCESS_KEY=%s' % aws_secret_access_key])
+
+        default_params.extend(
+            [
+             "--conf", "spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem"])
+
+        for scheme in ['s3', 's3n']:
+            default_params.extend([
+                "--conf", "spark.hadoop.fs.%s.awsAccessKeyId=%s" % (scheme, aws_access_key_id),
+                "--conf", "spark.hadoop.fs.%s.awsSecretAccessKey=%s" % (scheme, aws_secret_access_key)])
+
+        default_params.extend([
+            "--conf", "spark.hadoop.fs.s3a.access.key=%s" % aws_access_key_id,
+            "--conf", "spark.hadoop.fs.s3a.secret.key=%s" % aws_secret_access_key,
+            "--conf", "spark.executorEnv.AWS_ACCESS_KEY_ID=%s" % aws_access_key_id,
+            "--conf", "spark.executorEnv.AWS_SECRET_ACCESS_KEY=%s" % aws_secret_access_key])
+
+    if work_dir:
+        docker_parameters.extend(['-v', '%s:/data' % work_dir])
+
+    parameters=_make_parameters(master_ip,
+                                default_params,
+                                memory,
+                                arguments,
+                                override_parameters)
+
+
+    dockerCall(job=job,
+               tool="quay.io/ucsc_cgl/mango:latest",
+               dockerParameters=docker_parameters,
+               parameters=parameters)
+
+
+
+def call_mango_notebook(job, master_ip, arguments,
+              host='127.0.0.1',
+              port=8888,
+              memory=None,
+              override_parameters=None,
+              work_dir=None,
+              run_local=False,
+              run_mac=False,
+              aws_access_key_id=None,
+              aws_secret_access_key=None):
+    """
+    Invokes the Mango browsercontainer. Find mango at https://github.com/bigdatagenomics/mango.
+
+    :param toil.Job.job job: The Toil Job calling this function
+    :param masterIP: The Spark leader IP address.
+    :param arguments: Arguments to pass to ADAM.
+    :param memory: Gigabytes of memory to provision for Spark driver/worker.
+    :param override_parameters: Parameters passed by the user, that override our defaults.
+    :param run_local: If true, runs Spark with the --master local[*] setting, which uses
+      all cores on the local machine. The master_ip will be disregarded.
+
+    :type masterIP: MasterAddress
+    :type arguments: list of string
+    :type memory: int or None
+    :type override_parameters: list of string or None
+    :type native_adam_path: string or None
+    :type run_local: boolean
+    """
+
+    if run_local:
+        master = ["--master", "local[*]"]
+    else:
+        '''
+        hostname = check_output(["hostname", "-i"])[:-1]
+        master = ["--conf", "spark.driver.host=%s" % hostname]
+        '''
+        master = []
+        pass
+
+    default_params = (master + [
+        # set max result size to unlimited, see #177
+        "--conf", "spark.driver.maxResultSize=0",
+        "--conf", "spark.hadoop.hadoopbam.bam.enable-bai-splitter=true",
+        # TODO broken package
+        # "--packages", "com.amazonaws:aws-java-sdk-pom:1.10.34,org.apache.hadoop:hadoop-aws:2.7.4",
+        "--conf", "spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem"])
+
+    docker_parameters = []
+    if not run_mac:
+        docker_parameters.extend(['--net=host']) # for accessing localhost
+    else:
+        # port forwarding
+        endpoint = "{}:8888".format(port)
+        docker_parameters.extend(['-p', endpoint])
+
+    # reconfigure entrypoint for notebook
+    docker_parameters.extend(['--entrypoint=/home/mango/bin/mango-notebook'])
+
+    if aws_access_key_id:
+
+        require(aws_secret_access_key,
+                'If AWS access key is passed, secret key must be defined')
+
+        docker_parameters.extend(['-e', 'AWS_ACCESS_KEY_ID=%s' % aws_access_key_id,
+                                  '-e', 'AWS_SECRET_ACCESS_KEY=%s' % aws_secret_access_key])
+
+        default_params.extend(
+            [
+             "--conf", "spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem"])
+
+        for scheme in ['s3', 's3n']:
+            default_params.extend([
+                "--conf", "spark.hadoop.fs.%s.awsAccessKeyId=%s" % (scheme, aws_access_key_id),
+                "--conf", "spark.hadoop.fs.%s.awsSecretAccessKey=%s" % (scheme, aws_secret_access_key)])
+
+        default_params.extend([
+            "--conf", "spark.hadoop.fs.s3a.access.key=%s" % aws_access_key_id,
+            "--conf", "spark.hadoop.fs.s3a.secret.key=%s" % aws_secret_access_key,
+            "--conf", "spark.executorEnv.AWS_ACCESS_KEY_ID=%s" % aws_access_key_id,
+            "--conf", "spark.executorEnv.AWS_SECRET_ACCESS_KEY=%s" % aws_secret_access_key])
+
+    if work_dir:
+        docker_parameters.extend(['-v', '%s:/data' % work_dir])
+
+    parameters=_make_parameters(master_ip,
+                                default_params,
+                                memory,
+                                arguments,
+                                override_parameters)
+
+    print(parameters)
+
+
+    dockerCall(job=job,
+               tool="quay.io/ucsc_cgl/mango:latest",
+               dockerParameters=docker_parameters,
+               parameters=parameters)

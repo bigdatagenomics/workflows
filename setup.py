@@ -5,9 +5,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -83,7 +83,7 @@ def importVersion():
         new = version_template.expand_()
 
         print(new, sys.stderr)
-        
+
         try:
             with open('bdgenomics/workflows/version.py') as f:
                 old = f.read()
@@ -125,6 +125,8 @@ kwargs = dict(
             'bdg-deca = bdgenomics.workflows.deca_pipeline.call_cnvs:main',
             'bdg-cannoli-bwa = bdgenomics.workflows.cannoli_pipeline.bwa_alignment:main',
             'bdg-gatk3-benchmark = bdgenomics.workflows.benchmarking.gatk3_pipeline.preprocessing:main',
+            'bdg-mango-browser = bdgenomics.workflows.mango_pipeline.run_mango_browser:main',
+            'bdg-mango-notebook = bdgenomics.workflows.mango_pipeline.run_mango_notebook:main',
             'bdg-mkdups-benchmark = bdgenomics.workflows.benchmarking.single_node.mkdups:main',
             'bdg-sort-benchmark = bdgenomics.workflows.benchmarking.single_node.sort:main',
             'bdg-ri-benchmark = bdgenomics.workflows.benchmarking.single_node.realign_indels:main',
