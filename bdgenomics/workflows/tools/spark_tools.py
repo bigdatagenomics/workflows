@@ -59,7 +59,7 @@ def _make_parameters(master_ip, default_parameters, memory, arguments, override_
     :param memory: The memory to allocate to each Spark driver and executor.
     :param arguments: Arguments to pass to the submitted job.
     :param override_parameters: Parameters passed by the user, that override our defaults.
-    
+
     :type masterIP: MasterAddress
     :type default_parameters: list of string
     :type arguments: list of string
@@ -72,7 +72,7 @@ def _make_parameters(master_ip, default_parameters, memory, arguments, override_
     require((override_parameters is not None or memory is not None) and
             (override_parameters is None or memory is None),
             "Either the memory setting must be defined or you must provide Spark configuration parameters.")
-    
+
     # if the user hasn't provided overrides, set our defaults
     parameters = []
     if memory is not None:
@@ -94,8 +94,8 @@ def _make_parameters(master_ip, default_parameters, memory, arguments, override_
     # now add the tool arguments and return
     parameters.extend(arguments)
 
-    return parameters        
-    
+    return parameters
+
 
 def call_conductor(job, master_ip, src, dst, memory=None, override_parameters=None):
     """
@@ -242,7 +242,7 @@ def call_deca(job, master_ip, arguments,
 
         require(aws_secret_access_key,
                 'If AWS access key is passed, secret key must be defined')
-        
+
         docker_parameters.extend(['-e', 'AWS_ACCESS_KEY_ID=%s' % aws_access_key_id,
                                   '-e', 'AWS_SECRET_ACCESS_KEY=%s' % aws_secret_access_key])
 
@@ -263,7 +263,7 @@ def call_deca(job, master_ip, arguments,
 
     if work_dir:
         docker_parameters.extend(['-v', '%s:/data' % work_dir])
-    
+
     dockerCall(job=job,
                tool="quay.io/ucsc_cgl/deca:0.1.0--7d13833a1220001481c4de0489e893c93ee3310f",
                dockerParameters=docker_parameters,
@@ -317,7 +317,7 @@ def call_mango_browser(job, master_ip, arguments,
         # set max result size to unlimited, see #177
         "--conf", "spark.driver.maxResultSize=0",
         "--conf", "spark.hadoop.hadoopbam.bam.enable-bai-splitter=true",
-        # "--packages", "com.amazonaws:aws-java-sdk-pom:1.10.34,org.apache.hadoop:hadoop-aws:2.7.4", TODO download failing
+        "--packages", "com.amazonaws:aws-java-sdk-pom:1.10.34,org.apache.hadoop:hadoop-aws:2.7.4",
         "--conf", "spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem"])
 
     docker_parameters = []
@@ -325,7 +325,7 @@ def call_mango_browser(job, master_ip, arguments,
     if not run_mac:
         docker_parameters.extend(['--net=host']) # for accessing localhost
     else:
-        # port forwarding because we have not set net host
+        # port forwarding because we have not set --net=host
         endpoint = "{}:8080".format(port)
         docker_parameters.extend(['-p', endpoint])
 

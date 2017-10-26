@@ -115,9 +115,11 @@ def setup_mango_state(job,
     else:
 
         is_s3(reference)
+
         if reads is not None:
             for f in reads.split(','):
                 is_s3(f)
+                # browser requires bam files to be indexed
                 if f.endswith('bam'):
                     is_s3(f + '.bai')
 
@@ -224,16 +226,23 @@ def run_mango_browser(job,
 
     else:
 
-        # TODO what about file formatting?
+        # holds mango arguments
+        arguments = [reference]
 
-        # TODO parameters
+        if genes:
+            arguments.extend(['-genes', genes])
+
+        if reads:
+            arguments.extend(['-reads', ','.join(reads)])
+
+        if variants:
+            arguments.extend(['-variants', ','.join(variants)])
+
+        if features:
+            arguments.extend(['-features', ','.join(features)])
 
         call_mango_browser(job, master_ip=master_ip,
-                  arguments=[reference,
-                             '-genes', genes,
-                             '-reads', ' '.join(reads),
-                             '-variants', ' '.join(variants),
-                             '-features', ' '.join(features)],
+                  arguments=arguments,
                   host=host,
                   port=port,
                   memory=memory,
