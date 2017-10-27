@@ -32,7 +32,7 @@ from toil_lib.urls import download_url_job
 
 from bdgenomics.workflows.spark import spawn_spark_cluster
 
-from bdgenomics.workflows.tools.functions import is_s3
+from bdgenomics.workflows.tools.functions import is_s3a
 from bdgenomics.workflows.tools.spark_tools import call_deca, \
     MasterAddress, \
     HDFS_MASTER_PORT, \
@@ -74,11 +74,11 @@ def setup_deca_state(job,
 
     else:
 
-        is_s3(targets)
-        is_s3(output)
+        is_s3a(targets)
+        is_s3a(output)
         for f in input_files:
-            is_s3(f)
-            
+            is_s3a(f)
+
         # launch the spark cluster
         master_ip = spawn_spark_cluster(job,
                                         int(num_nodes) - 1,

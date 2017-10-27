@@ -114,22 +114,23 @@ def setup_mango_state(job,
 
     else:
 
-        is_s3(reference)
+        is_s3a(reference)
+
 
         if reads is not None:
             for f in reads.split(','):
-                is_s3(f)
+                is_s3a(f)
                 # browser requires bam files to be indexed
                 if f.endswith('bam'):
-                    is_s3(f + '.bai')
+                    is_s3a(f + '.bai')
 
         if variants is not None:
             for f in variants.split(','):
-                is_s3(f)
+                is_s3a(f)
 
         if features is not None:
             for f in features.split(','):
-                is_s3(f)
+                is_s3a(f)
 
         # launch the spark cluster
         master_ip = spawn_spark_cluster(job,

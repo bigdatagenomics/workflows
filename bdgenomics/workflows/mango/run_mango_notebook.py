@@ -32,7 +32,7 @@ from toil_lib.urls import download_url_job
 
 
 from bdgenomics.workflows.spark import spawn_spark_cluster
-from bdgenomics.workflows.tools.functions import is_s3
+from bdgenomics.workflows.tools.functions import is_s3a
 from bdgenomics.workflows.tools.spark_tools import call_mango_notebook, \
     MasterAddress, \
     HDFS_MASTER_PORT, \
@@ -99,6 +99,7 @@ def run_mango_notebook(job,
 
         # TODO: NOT SURE IF WE NEED THIS WHEN NET-HOST IS SET
         arguments.append('--ip=0.0.0.0')
+        arguments.append('--NotebookApp.token=')
 
         call_mango_notebook(job, master_ip=None, arguments=arguments,
                   memory=memory,
@@ -158,9 +159,7 @@ def main():
                 'thus must be greater than 1. %s was passed.' % args.num_nodes)
 
 
-    _log.info("startToil")
-
-    Job.Runner.startToil(Job.wrapJobFn(setup_mango_state,
+    job = Job.wrapJobFn(setup_mango_state,
                                        args.host,
                                        args.port,
                                        args.memory,
@@ -168,7 +167,18 @@ def main():
                                        args.run_mac,
                                        args.num_nodes,
                                        args.aws_access_key,
-                                       args.aws_secret_key), args)
+                                       args.aws_secret_key)
+
+    # Notebook is always forced shutdown with keyboard interrupt.
+    # Always clean up after this process.
+    args.clean = "always"
+
+    try:
+        Job.Runner.startToil(job, args)
+
+    except KeyboardInterrupt:
+        _log.info("Shut down notebook job.")
+
 
 
 if __name__ == "__main__":

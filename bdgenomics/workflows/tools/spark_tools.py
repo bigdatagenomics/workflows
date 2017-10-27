@@ -10,7 +10,6 @@ import os.path
 from subprocess import check_call, check_output
 
 from toil.lib.docker import dockerCall
-
 from toil_lib import require
 
 SPARK_MASTER_PORT = "7077"
@@ -285,7 +284,7 @@ def call_mango_browser(job, master_ip, arguments,
               aws_access_key_id=None,
               aws_secret_access_key=None):
     """
-    Invokes the Mango browsercontainer. Find mango at https://github.com/bigdatagenomics/mango.
+    Invokes the Mango browser container. Find mango at https://github.com/bigdatagenomics/mango.
 
     :param toil.Job.job job: The Toil Job calling this function
     :param masterIP: The Spark leader IP address.
@@ -361,12 +360,17 @@ def call_mango_browser(job, master_ip, arguments,
                                 arguments,
                                 override_parameters)
 
+    job.fileStore.logToMaster("Starting the merge sort")
+    job.fileStore.logToMaster(__name__)
 
-    dockerCall(job=job,
-               tool="quay.io/ucsc_cgl/mango:latest",
-               dockerParameters=docker_parameters,
-               parameters=parameters)
+    try:
+        dockerCall(job=job,
+                   tool="quay.io/ucsc_cgl/mango:latest",
+                   dockerParameters=docker_parameters,
+                   parameters=parameters)
 
+    except:
+        job.fileStore.logToMaster("docker exited")
 
 
 def call_mango_notebook(job, master_ip, arguments,
@@ -380,7 +384,7 @@ def call_mango_notebook(job, master_ip, arguments,
               aws_access_key_id=None,
               aws_secret_access_key=None):
     """
-    Invokes the Mango browsercontainer. Find mango at https://github.com/bigdatagenomics/mango.
+    Invokes the Mango browser container. Find mango at https://github.com/bigdatagenomics/mango.
 
     :param toil.Job.job job: The Toil Job calling this function
     :param masterIP: The Spark leader IP address.
@@ -412,8 +416,7 @@ def call_mango_notebook(job, master_ip, arguments,
         # set max result size to unlimited, see #177
         "--conf", "spark.driver.maxResultSize=0",
         "--conf", "spark.hadoop.hadoopbam.bam.enable-bai-splitter=true",
-        # TODO broken package
-        # "--packages", "com.amazonaws:aws-java-sdk-pom:1.10.34,org.apache.hadoop:hadoop-aws:2.7.4",
+        "--packages", "com.amazonaws:aws-java-sdk-pom:1.10.34,org.apache.hadoop:hadoop-aws:2.7.4",
         "--conf", "spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem"])
 
     docker_parameters = []
@@ -458,10 +461,6 @@ def call_mango_notebook(job, master_ip, arguments,
                                 memory,
                                 arguments,
                                 override_parameters)
-
-    print(parameters)
-
-
     dockerCall(job=job,
                tool="quay.io/ucsc_cgl/mango:latest",
                dockerParameters=docker_parameters,
