@@ -313,7 +313,6 @@ def call_mango_browser(job, master_ip, arguments,
         pass
 
     default_params = (master + [
-        # set max result size to unlimited, see #177
         "--conf", "spark.driver.maxResultSize=0",
         "--conf", "spark.hadoop.hadoopbam.bam.enable-bai-splitter=true",
         "--packages", "com.amazonaws:aws-java-sdk-pom:1.10.34,org.apache.hadoop:hadoop-aws:2.7.4",
@@ -335,10 +334,6 @@ def call_mango_browser(job, master_ip, arguments,
 
         docker_parameters.extend(['-e', 'AWS_ACCESS_KEY_ID=%s' % aws_access_key_id,
                                   '-e', 'AWS_SECRET_ACCESS_KEY=%s' % aws_secret_access_key])
-
-        default_params.extend(
-            [
-             "--conf", "spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem"])
 
         for scheme in ['s3', 's3n']:
             default_params.extend([
@@ -428,7 +423,7 @@ def call_mango_notebook(job, master_ip, arguments,
         docker_parameters.extend(['-p', endpoint])
 
     # reconfigure entrypoint for notebook
-    docker_parameters.extend(['--entrypoint=/home/mango/bin/mango-notebook'])
+    docker_parameters.extend(['--entrypoint=/opt/cgl-docker-lib/mango/bin/mango-notebook'])
 
     if aws_access_key_id:
 

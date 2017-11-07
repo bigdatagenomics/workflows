@@ -30,9 +30,9 @@ from toil_lib import require
 from toil_lib.files import generate_file, move_files
 from toil_lib.urls import download_url_job
 
-
+from bdgenomics.workflows.adam_pipeline
 from bdgenomics.workflows.spark import spawn_spark_cluster
-from bdgenomics.workflows.tools.functions import is_s3
+from bdgenomics.workflows.tools.functions import is_s3a
 from bdgenomics.workflows.tools.spark_tools import call_mango_browser, \
     MasterAddress, \
     HDFS_MASTER_PORT, \
@@ -60,7 +60,6 @@ def setup_mango_state(job,
         job.addChild(file_id)
 
         loaded_reference = (file_name, file_id.rv())
-
 
         loaded_reads = []
 
@@ -115,7 +114,6 @@ def setup_mango_state(job,
     else:
 
         is_s3a(reference)
-
 
         if reads is not None:
             for f in reads.split(','):
