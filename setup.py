@@ -114,7 +114,7 @@ kwargs = dict(
     author_email='adam-developers@googlegroups.com',
     url="https://github.com/bigdatagenomics/workflows",
     install_requires=[
-        'pyyaml==3.11',
+        'pyyaml==5.1',
         'toil-lib==1.1.8'],
     tests_require=[
         'pytest==2.8.3'],
