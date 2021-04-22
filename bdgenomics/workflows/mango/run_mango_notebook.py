@@ -7,9 +7,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,150 +30,112 @@ from toil_lib import require
 from toil_lib.files import generate_file, move_files
 from toil_lib.urls import download_url_job
 
-from bdgenomics.workflows.spark import spawn_spark_cluster
 
+from bdgenomics.workflows.spark import spawn_spark_cluster
 from bdgenomics.workflows.tools.functions import is_s3a
-from bdgenomics.workflows.tools.spark_tools import call_deca, \
+from bdgenomics.workflows.tools.spark_tools import call_mango_notebook, \
     MasterAddress, \
     HDFS_MASTER_PORT, \
     SPARK_MASTER_PORT
 
 _log = logging.getLogger(__name__)
 
-def setup_deca_state(job,
-                     input_files, targets, output,
+def setup_mango_state(job,
+                     host,
+                     port,
                      memory,
-                     run_local, num_nodes,
+                     run_local, run_mac, num_nodes,
                      aws_access_key_id, aws_secret_access_key):
 
     if run_local:
 
-        # import bams
-        loaded_files = []
-        for f in input_files:
-            
-            file_name = os.path.basename(f)
-            file_id = job.wrapJobFn(download_url_job, f)
-            job.addChild(file_id)
-            
-            loaded_files.append((file_name, file_id.rv()))
-            
-        # import target file
-        target_id = job.wrapJobFn(download_url_job, targets)
-        job.addChild(target_id)
-        target = (os.path.basename(targets), target_id.rv())
-        
-        call_cnvs = job.wrapJobFn(call_deca_cnvs,
-                                  loaded_files, target,
-                                  output,
+
+        run_mango = job.wrapJobFn(run_mango_notebook,
+                                  host,
+                                  port,
                                   memory,
                                   run_local,
+                                  run_mac,
                                   None,
                                   aws_access_key_id, aws_secret_access_key)
-        job.addFollowOn(call_cnvs)
+        job.addFollowOn(run_mango)
 
     else:
-
-        is_s3a(targets)
-        is_s3a(output)
-        for f in input_files:
-            is_s3a(f)
 
         # launch the spark cluster
         master_ip = spawn_spark_cluster(job,
                                         int(num_nodes) - 1,
                                         cores=multiprocessing.cpu_count(),
                                         memory=memory)
-        
-        call_cnvs = job.wrapJobFn(call_deca_cnvs,
-                                  input_files,
-                                  targets,
-                                  output,
+
+        run_mango = job.wrapJobFn(run_mango_notebook,
+                                  host,
+                                  port,
                                   memory,
+                                  False,
                                   False,
                                   master_ip,
                                   aws_access_key_id, aws_secret_access_key)
-        job.addChild(call_cnvs)
+        job.addChild(run_mango)
 
 
-def call_deca_cnvs(job,
-                   input_bams, targets, output,
+def run_mango_notebook(job,
+                   host,
+                   port,
                    memory,
                    run_local,
+                   run_mac,
                    master_ip,
-                   aws_access_key_id, aws_secret_access_key):
-    
+                   aws_access_key_id,
+                   aws_secret_access_key):
+
+    # get work dir
+    work_dir = job.fileStore.getLocalTempDir()
+
+    arguments = []
+    arguments.append('--allow-root') # required for npm in docker
+
     if run_local:
-        # get work dir
-        work_dir = job.fileStore.getLocalTempDir()
-        
-        # load targets
-        job.fileStore.readGlobalFile(targets[1], os.path.join(work_dir, targets[0]))
-        
-        # load bams
-        inputs = []
-        for (bam, bam_id) in input_bams:
-            
-            inputs.append('/data/%s' % bam)
-            job.fileStore.readGlobalFile(bam_id, os.path.join(work_dir, bam))
-            
-        call_deca(job, master_ip=None,
-                  arguments=['cnv',
-                             '-I', ' '.join(inputs),
-                             '-L', '/data/%s' % targets[0],
-                             '-o', '/data/cnvs.gff'],
+
+        # TODO: NOT SURE IF WE NEED THIS WHEN NET-HOST IS SET
+        arguments.append('--ip=0.0.0.0')
+        arguments.append('--NotebookApp.token=')
+
+        call_mango_notebook(job, master_ip=None, arguments=arguments,
                   memory=memory,
                   run_local=True,
+                  run_mac=run_mac,
                   work_dir=work_dir,
                   aws_access_key_id=aws_access_key_id,
                   aws_secret_access_key=aws_secret_access_key)
-        
-        # after running deca, move cnvs to output dir
-        move_files([os.path.join(work_dir, 'cnvs.gff')], output)
 
     else:
 
-        call_deca(job, master_ip=master_ip,
-                  arguments=['cnv',
-                             '-I', ' '.join(input_bams),
-                             '-L', targets,
-                             '-o', '%s/cnvs.gff' % output],
+        call_mango_notebook(job, master_ip=master_ip, arguments=arguments,
+                  host=host,
+                  port=port,
                   memory=memory,
                   run_local=False,
+                  run_mac=False,
                   aws_access_key_id=aws_access_key_id,
                   aws_secret_access_key=aws_secret_access_key)
-
-
-def load_samples(samples):
-
-    fp = open(samples, 'r')
-    s_list = []
-
-    for line in fp:
-        s_list.append(line.strip().rstrip())
-
-    fp.close()
-    return s_list
-
 
 def main():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--samples', help='Path to a file containing the S3 URL or local paths to the input SAM or BAM file.'
-                        'NOTE: unlike other pipelines, we do not support ftp://, gnos://, etc. schemes.',
-                        required=True)
-    parser.add_argument('--targets', help='Path to a file containing the S3 URL or local path to the target file.'
-                        'NOTE: unlike other pipelines, we do not support ftp://, gnos://, etc. schemes.',
-                        required=True)
-    parser.add_argument('--output-dir', required=True, default=None,
-                        help='full path where final results will be output')
     parser.add_argument('--run-local', default=False, action='store_true',
                         help='if specified, runs locally. exclusive of --num-nodes')
+    parser.add_argument('--host', default='localhost', action='store_true',
+                            help='host to forward web UI to. Default is localhost.')
+    parser.add_argument('--port', default=10000, action='store_true',
+                                help='pot to forward web UI to. Default is 10000.')
+    parser.add_argument('--run-mac', default=False, action='store_true',
+                            help='if specified, runs on mac.')
     parser.add_argument('--num-nodes', default=None,
                         help='the number of nodes to use for the spark cluster.'
                         'exclusive of --run-local')
     parser.add_argument('--memory', required=True, default=None,
-                        help='Amount of memory (in gb) to allocate for DECA')
+                        help='Amount of memory (in gb) to allocate for mango')
     parser.add_argument('--aws_access_key', required=False, default=None,
                         help='AWS access key for authenticating with S3')
     parser.add_argument('--aws_secret_key', required=False, default=None,
@@ -196,17 +158,27 @@ def main():
                 'num_nodes allocates one Spark/HDFS master and n-1 workers, and '
                 'thus must be greater than 1. %s was passed.' % args.num_nodes)
 
-    samples = load_samples(args.samples)    
-        
-    Job.Runner.startToil(Job.wrapJobFn(setup_deca_state,
-                                       samples,
-                                       args.targets,
-                                       args.output_dir,
+
+    job = Job.wrapJobFn(setup_mango_state,
+                                       args.host,
+                                       args.port,
                                        args.memory,
                                        args.run_local,
+                                       args.run_mac,
                                        args.num_nodes,
                                        args.aws_access_key,
-                                       args.aws_secret_key), args)
+                                       args.aws_secret_key)
+
+    # Notebook is always forced shutdown with keyboard interrupt.
+    # Always clean up after this process.
+    args.clean = "always"
+
+    try:
+        Job.Runner.startToil(job, args)
+
+    except KeyboardInterrupt:
+        _log.info("Shut down notebook job.")
+
 
 
 if __name__ == "__main__":
