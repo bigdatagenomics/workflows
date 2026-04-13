@@ -117,7 +117,7 @@ kwargs = dict(
         'pyyaml==5.4',
         'toil-lib==1.1.8'],
     tests_require=[
-        'pytest==2.8.3'],
+        'pytest==9.0.3'],
     entry_points={
         'console_scripts': [
             'bdg-adam = bdgenomics.workflows.adam_pipeline.preprocessing:main',
